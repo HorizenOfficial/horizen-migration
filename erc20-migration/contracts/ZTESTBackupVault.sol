@@ -25,10 +25,7 @@ contract ZTESTBackupVault  {
 
     // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock distribution
     bytes32 private cumulativeHashCheckpoint;
-    
-    // Batch current: will start from 0 and increment by 1 every batchInsert
-    uint256 public currentBatch;
-    
+       
     // admin authority
     address public admin;
     
@@ -49,7 +46,6 @@ contract ZTESTBackupVault  {
         admin = _admin;
         _cumulativeHash = bytes32(0);
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
-        currentBatch = 0;
         nextRewardIndex = 0;
     }
 
@@ -64,7 +60,6 @@ contract ZTESTBackupVault  {
             addressList.push(addresses[i]);
             _cumulativeHash = keccak256(abi.encode(_cumulativeHash, addresses[i], values[i]));
         }
-        currentBatch++;
     }
 
     /// @notice Return the balance data associated with an address
