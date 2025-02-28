@@ -19,12 +19,16 @@ describe("Token and Backup contract testing", function () {
     tuples = Object.entries(jsonData).map(([key, value]) => [key, value.toString()]);  
   });
 
+  function updateCumulativeHash(previousHash, address, value){
+    //the following hashing algorithm produces the same output as the one used in solidity
+    const encoded = web3.eth.abi.encodeParameters(['bytes32', 'address', 'uint256'],[previousHash, address, value])
+    return web3.utils.sha3(encoded, {encoding: 'hex'})
+  }
+
   it("Calculate locallly the dump recursive hash", async function () {
     dumpRecursiveHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
     for (const [key, value] of tuples) {
-      //the following hashing algorithm produces the same output as the one used in solidity
-      const encoded = web3.eth.abi.encodeParameters(['bytes32', 'address', 'uint256'],[dumpRecursiveHash, key, value])
-      dumpRecursiveHash = web3.utils.sha3(encoded, {encoding: 'hex'})
+      dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, key, value);
     }
     console.log("Hash computed locally:", dumpRecursiveHash);
   });  
@@ -38,21 +42,25 @@ describe("Token and Backup contract testing", function () {
   it("Store backup balances in the contract (in batches of 5)", async function () {
     var addresses = [];
     var balances = [];
+    var prevCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    var calcCumulativeHash = prevCumulativeHash;
     var batchNumber = 0;
     for (const [key, value] of tuples) {
       addresses.push(key);
       balances.push(value);
+      calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, key, value);
       if (addresses.length == 5){
         console.log("Inserting batch: "+batchNumber);
-        await ZTESTBackupVault.batchInsert(batchNumber, addresses, balances);
+        await ZTESTBackupVault.batchInsert(prevCumulativeHash, addresses, balances);
         batchNumber++;
         addresses = [];
         balances = [];
+        prevCumulativeHash = calcCumulativeHash;
       }
     }
     if (addresses.length>0){
       console.log("Inserting batch: "+batchNumber);
-      await ZTESTBackupVault.batchInsert(batchNumber, addresses, balances);
+      await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
     }
   });
 

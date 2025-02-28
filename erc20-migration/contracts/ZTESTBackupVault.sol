@@ -40,7 +40,7 @@ contract ZTESTBackupVault  {
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to performe restore and distribution operations
     /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calcolated with all the dump data.
-    ///                                   Will be used to verify the consisntency of the restored data, and as
+    ///                                   Will be used to verify the consinstency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
     ///                                   can start
     constructor(address _admin, bytes32 _cumulativeHashCheckpoint) {
@@ -54,10 +54,10 @@ contract ZTESTBackupVault  {
     }
 
     /// @notice Insert a new bach of tuples (address, value) and updates the cumulative hash.
-    ///         Only admin can execute this function
-    function batchInsert(uint256 batchNumber, address[] memory addresses, uint256[] memory values) public {
+    ///         To guarantee order execution, the previous cumulativeHash must be provided (bytes32(0) for the first batch)
+    function batchInsert(bytes32 prevCumulativeHash, address[] memory addresses, uint256[] memory values) public {
         require(msg.sender == admin, "Only admin can execute this operation");
-        require(batchNumber == currentBatch, "Batch number not correct");
+        require(prevCumulativeHash == _cumulativeHash, "Incorrect previous cumulative hash");
         require(addresses.length == values.length, "Array length mismatch");
         for (uint256 i = 0; i < addresses.length; i++) {
             balances[addresses[i]] = Balances({amount: values[i], distributed: false});
