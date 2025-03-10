@@ -7,7 +7,7 @@ The ERC-20 contract
 
 - ZTESTBackupVault.sol<br>
 Exposes methods to allow a central authority to load the balances to reward, and then proceed to distribute them.<br>
-A comulative hash of all the address+balances is calculated both offchain and onchain, allowing any external user to verify the fairness of the distribution.
+A cumulative hash of all the address+balances is calculated both offchain and onchain, allowing any external user to verify the fairness of the distribution.
 
 Usage:
 
@@ -18,6 +18,6 @@ Usage:
 <i>npx hardhat test</i>
 
 3. (Optionally) If you want to run the suite in real network:
-- create a .env file in the root folder with an entry: MNEMONIC=<seed_prhase> , with the seedphrase of a metamask wallet with founds
+- create a .env file in the root folder with an entry: MNEMONIC=<seed_phrase> , with the seedphrase of a metamask wallet with funds
 - configure in hardhat-config.js the desired network and change the value of defaultNetwork property to use it
 - rerun point 2.

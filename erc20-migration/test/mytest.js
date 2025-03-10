@@ -25,7 +25,7 @@ describe("Token and Backup contract testing", function () {
     return web3.utils.sha3(encoded, {encoding: 'hex'})
   }
 
-  it("Calculate locallly the dump recursive hash", async function () {
+  it("Calculate locally the dump recursive hash", async function () {
     dumpRecursiveHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
     for (const [key, value] of tuples) {
       dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, key, value);
@@ -93,7 +93,7 @@ describe("Token and Backup contract testing", function () {
     }
   });
 
-  it("If we have distrubuted everything, no more distribution can happen", async function () {
+  it("If we have distributed everything, no more distribution can happen", async function () {
     expect(ZTESTBackupVault.distribute()).to.be.revertedWith("Nothing to distribute");
   });
   

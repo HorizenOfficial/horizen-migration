@@ -32,7 +32,7 @@ contract ZTESTBackupVault  {
     // Tracks rewarded addresses (next address to reward)
     uint256 private nextRewardIndex;
 
-    IERC20Mintable public zenToken = IERC20Mintable(address(0));
+    IERC20Mintable public zenToken;
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to performe restore and distribution operations
@@ -55,10 +55,12 @@ contract ZTESTBackupVault  {
         require(msg.sender == admin, "Only admin can execute this operation");
         require(prevCumulativeHash == _cumulativeHash, "Incorrect previous cumulative hash");
         require(addresses.length == values.length, "Array length mismatch");
-        for (uint256 i = 0; i < addresses.length; i++) {
+        uint256 i;
+        while (i != addresses.length) {
             balances[addresses[i]] = Balances({amount: values[i], distributed: false});
             addressList.push(addresses[i]);
             _cumulativeHash = keccak256(abi.encode(_cumulativeHash, addresses[i], values[i]));
+            unchecked { ++i; }
         }
     }
 
