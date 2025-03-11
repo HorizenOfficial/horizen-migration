@@ -42,8 +42,7 @@ describe("Token and Backup contract testing", function () {
   it("Store backup balances in the contract (in batches of 5)", async function () {
     var addresses = [];
     var balances = [];
-    var prevCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-    var calcCumulativeHash = prevCumulativeHash;
+    var calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
     var batchNumber = 0;
     for (const [key, value] of tuples) {
       addresses.push(key);
@@ -51,11 +50,10 @@ describe("Token and Backup contract testing", function () {
       calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, key, value);
       if (addresses.length == 5){
         console.log("Inserting batch: "+batchNumber);
-        await ZTESTBackupVault.batchInsert(prevCumulativeHash, addresses, balances);
+        await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
         batchNumber++;
         addresses = [];
         balances = [];
-        prevCumulativeHash = calcCumulativeHash;
       }
     }
     if (addresses.length>0){

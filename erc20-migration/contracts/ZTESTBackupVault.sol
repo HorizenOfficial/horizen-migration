@@ -34,6 +34,14 @@ contract ZTESTBackupVault  {
 
     IERC20Mintable public zenToken;
 
+    error AddressNotValid();
+    error CumulativeHashNotValid();
+    error UnauthorizedOperation();
+    error ArrayLengthMismatch();
+    error ERC20NotSet();
+    error NothingToDistribute();
+
+
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to performe restore and distribution operations
     /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calcolated with all the dump data.
@@ -41,8 +49,8 @@ contract ZTESTBackupVault  {
     ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
     ///                                   can start
     constructor(address _admin, bytes32 _cumulativeHashCheckpoint) {
-        require(_admin != address(0), "Admin address not valid");
-        require(_cumulativeHashCheckpoint != bytes32(0), "Cumulative hash not valid");
+        if(_admin == address(0)) revert AddressNotValid();
+        if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();   
         admin = _admin;
         _cumulativeHash = bytes32(0);
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
@@ -50,11 +58,10 @@ contract ZTESTBackupVault  {
     }
 
     /// @notice Insert a new bach of tuples (address, value) and updates the cumulative hash.
-    ///         To guarantee order execution, the previous cumulativeHash must be provided (bytes32(0) for the first batch)
-    function batchInsert(bytes32 prevCumulativeHash, address[] memory addresses, uint256[] memory values) public {
-        require(msg.sender == admin, "Only admin can execute this operation");
-        require(prevCumulativeHash == _cumulativeHash, "Incorrect previous cumulative hash");
-        require(addresses.length == values.length, "Array length mismatch");
+    ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
+    function batchInsert(bytes32 expectedCumulativeHash, address[] memory addresses, uint256[] memory values) public {
+        if (msg.sender != admin) revert UnauthorizedOperation();               
+        if (addresses.length != values.length) revert ArrayLengthMismatch();
         uint256 i;
         while (i != addresses.length) {
             balances[addresses[i]] = Balances({amount: values[i], distributed: false});
@@ -62,6 +69,7 @@ contract ZTESTBackupVault  {
             _cumulativeHash = keccak256(abi.encode(_cumulativeHash, addresses[i], values[i]));
             unchecked { ++i; }
         }
+        if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
     }
 
     /// @notice Return the balance data associated with an address
@@ -76,19 +84,19 @@ contract ZTESTBackupVault  {
 
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
     function setERC20(address addr) public {
-        require(msg.sender == admin, "Only admin can execute this operation");
-        require(address(zenToken) == address(0), "ERC-20 address already set");
-        require(addr !=  address(0), "Invalid address");
+        if (msg.sender != admin) revert UnauthorizedOperation();     
+        if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
+        if(addr == address(0)) revert AddressNotValid();
         zenToken = IERC20Mintable(addr);
     }
     
     /// @notice Distribute ZEN for the next (max) 10 addresses, until we have reached the end of the list
     ///         Can be executed only when we have reached the planned cumulativeHashCheckpoint (meaning all data has been loaded)
     function distribute() public  {
-        require(msg.sender == admin, "Only admin can execute this operation");
-        require(_cumulativeHash == cumulativeHashCheckpoint, "Loaded data not matching - distribution locked");
-        require(address(zenToken) != address(0), "ERC-20 address not set - please call setERC20() method before this");
-        require(nextRewardIndex <  addressList.length, "Nothing to distribute");
+        if (msg.sender != admin) revert UnauthorizedOperation();     
+        if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked
+        if (address(zenToken) == address(0)) revert ERC20NotSet();
+        if (nextRewardIndex == addressList.length) revert NothingToDistribute();
         
         uint256 count = 0;
         while (nextRewardIndex < addressList.length && count < 10) {
@@ -104,10 +112,9 @@ contract ZTESTBackupVault  {
 
     /// @notice Return true if admin is able to distribute more
     function moreToDistribute() public view returns (bool) {
-        require(msg.sender == admin, "Only admin can execute this operation");
+        if (msg.sender != admin) revert UnauthorizedOperation();     
         return _cumulativeHash != bytes32(0) &&
                 _cumulativeHash == cumulativeHashCheckpoint && 
-                 addressList.length > 0 &&
                   nextRewardIndex <  addressList.length;
     }
 }
