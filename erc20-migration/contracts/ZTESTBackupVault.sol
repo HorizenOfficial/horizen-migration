@@ -90,7 +90,7 @@ contract ZTESTBackupVault  {
         zenToken = IERC20Mintable(addr);
     }
     
-    /// @notice Distribute ZEN for the next (max) 10 addresses, until we have reached the end of the list
+    /// @notice Distribute ZEN for the next (max) 500 addresses, until we have reached the end of the list
     ///         Can be executed only when we have reached the planned cumulativeHashCheckpoint (meaning all data has been loaded)
     function distribute() public  {
         if (msg.sender != admin) revert UnauthorizedOperation();     
@@ -99,7 +99,7 @@ contract ZTESTBackupVault  {
         if (nextRewardIndex == addressList.length) revert NothingToDistribute();
         
         uint256 count = 0;
-        while (nextRewardIndex < addressList.length && count < 10) {
+        while (nextRewardIndex < addressList.length && count < 500) {
             address addr = addressList[nextRewardIndex];      
             if (balances[addr].amount > 0 && balances[addr].distributed == false) {
                 zenToken.mint(addr, balances[addr].amount);
