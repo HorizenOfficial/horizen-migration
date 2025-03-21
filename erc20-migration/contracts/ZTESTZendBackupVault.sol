@@ -16,7 +16,8 @@ contract ZTESTZendBackupVault  {
         bool distributed;
     }
     
-    // Map of the balances
+    // Map of the claimable balances.
+    // The key is the zendAddress in bs58 decoded format
     mapping(bytes20 => Balances) public balances;
        
     // Cumulative Hash calculated
@@ -30,22 +31,23 @@ contract ZTESTZendBackupVault  {
 
     IERC20Mintable public zenToken;
 
+    string private constant MESSAGE_PREFIX = "ZENCLAIM";
+
     error AddressNotValid();
     error CumulativeHashNotValid();
     error UnauthorizedOperation();
     error ArrayLengthMismatch();
     error ERC20NotSet();
-    error NothingToDistribute();
-
-    event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
     error NothingToClaim(bytes20 zenAddress);
     error AlreadyClaimed(bytes20 zenAddress);
+    event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
+
 
     /// @notice Smart contract constructor
-    /// @param _admin  the only entity authorized to performe restore and distribution operations
+    /// @param _admin  the only entity authorized to perform restore operations
     /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calcolated with all the dump data.
     ///                                   Will be used to verify the consinstency of the restored data, and as
-    ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
+    ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
     constructor(address _admin, bytes32 _cumulativeHashCheckpoint) {
         if(_admin == address(0)) revert AddressNotValid();
@@ -56,22 +58,23 @@ contract ZTESTZendBackupVault  {
     }
 
     /// @notice Insert a new bach of tuples (bytes20, value) and updates the cumulative hash.
+    ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
-    function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory addresses, uint256[] memory values) public {
+    function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory zendAddresses, uint256[] memory values) public {
         if (msg.sender != admin) revert UnauthorizedOperation();               
-        if (addresses.length != values.length) revert ArrayLengthMismatch();
+        if (zendAddresses.length != values.length) revert ArrayLengthMismatch();
         uint256 i;
-        while (i != addresses.length) {
-            balances[addresses[i]] = Balances({amount: values[i], distributed: false});
-            _cumulativeHash = keccak256(abi.encode(_cumulativeHash, addresses[i], values[i]));
+        while (i != zendAddresses.length) {
+            balances[zendAddresses[i]] = Balances({amount: values[i], distributed: false});
+            _cumulativeHash = keccak256(abi.encode(_cumulativeHash, zendAddresses[i], values[i]));
             unchecked { ++i; }
         }
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
     }
 
-    /// @notice Return the balance data associated with an address
-    function getBalance(bytes20 addr) public view returns (Balances memory) {
-        return balances[addr];
+    /// @notice Return the claimable balance data associated with a zendAddresses
+    function getBalance(bytes20 zendAddress) public view returns (Balances memory) {
+        return balances[zendAddress];
     }
     
     /// @notice Return the cumulativeHash  calculated so far
@@ -86,20 +89,29 @@ contract ZTESTZendBackupVault  {
         if(addr == address(0)) revert AddressNotValid();
         zenToken = IERC20Mintable(addr);
     }
-    
-    function claimP2PKH(address destAddress, bytes memory decodifiedBase64Signature, bytes32 pubKeyX, bytes32 pubKeyY) public {
+
+    /// @notice Claim a P2PKH balance.
+    ///         destAddress is the receiver of the founds
+    ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
+    ///         generated with the public key in compressed format, or uncompressed otherwise.
+    ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
+    ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
+    ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
+    function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public {
         if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked 
-        
-        VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(decodifiedBase64Signature);
+        if (address(zenToken) == address(0)) revert ERC20NotSet();
+        if (address(destAddress) == address(0)) revert AddressNotValid();
+
+        VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
+            //signature was compreesed, also the zen address will be from the compressed format
              zenAddress = VerificationLibrary.pubKeyCompressedToZenAddress(pubKeyX, VerificationLibrary.signByte(pubKeyY));
         }else{
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
         string memory asString = Strings.toHexString(uint256(uint160(destAddress)), 20);
-        string memory zenclaimTag = "ZENCLAIM";
-        string memory strMessageToSign = string(abi.encodePacked(zenclaimTag, asString));
+        string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
         VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
 

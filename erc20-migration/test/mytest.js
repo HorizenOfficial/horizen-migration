@@ -4,7 +4,7 @@ const JSONbig = require("json-bigint")({ storeAsString: true });
 const fs = require("fs");
 const path = require("path");
 
-describe("Token and Backup contract testing", function () {
+describe("Token and EON Backup contract testing", function () {
 
   var admin;
   var ZTESTBackupVault;
