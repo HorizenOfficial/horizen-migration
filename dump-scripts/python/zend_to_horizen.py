@@ -1,0 +1,55 @@
+import collections
+import csv
+import json
+import os
+import sys
+
+import base58
+
+"""
+This script transforms the balances data dumped from zend in the format requested for Horizen. 
+Specifically, the zend addresses are Base58 decoded and the balances are converted from satoshis (or "zennies") to weis.
+It requires as input a csv with the following format:
+ <zend address, balance in satoshi>
+It creates as output another json file with the format:
+<Decoded zend address, balance in wei>
+"""
+
+# 10 ^ 10
+SATOSHI_TO_WEI_MULTIPLIER = 10 ** 10
+
+def satoshi_2_wei(value_in_satoshi):
+	return int(round(SATOSHI_TO_WEI_MULTIPLIER * value_in_satoshi))
+
+if len(sys.argv) != 3:
+	print(
+		"Usage: python3 {} <zend dump file name> <output_file>"
+		.format(os.path.basename(__file__)))
+	sys.exit(1)
+
+zend_dump_file_name = sys.argv[1]
+result_file_name = sys.argv[2]
+
+with open(zend_dump_file_name, 'r') as zend_dump_file:
+	zend_dump_data_reader = csv.reader(zend_dump_file)
+
+	results = {}
+
+	for (zend_address, balance_in_satoshi, _) in zend_dump_data_reader:
+		decoded_address = base58.b58decode_check(zend_address).hex()
+		# Remove prefix
+		decoded_address = decoded_address[4:]
+		balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
+		if decoded_address in results:
+			print(
+				"Found 2 equal hashes: {0}, balance 1 {1}, balance 2 {2}"
+				.format(decoded_address, results[decoded_address], balance_in_wei ))
+			results[decoded_address] = results[decoded_address] + balance_in_wei
+		else:
+			results[decoded_address] = balance_in_wei
+
+
+sorted_accounts = collections.OrderedDict(sorted(results.items()))
+
+with open(result_file_name, "w") as jsonFile:
+	json.dump(results, jsonFile, indent=4)
