@@ -88,6 +88,8 @@ contract ZTESTZendBackupVault  {
     }
     
     function claimP2PKH(address destAddress, bytes memory decodifiedBase64Signature, bytes32 pubKeyX, bytes32 pubKeyY) public {
+        if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked 
+        
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(decodifiedBase64Signature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
