@@ -12,6 +12,8 @@ describe("Token and Backup contract testing", function () {
   var dumpRecursiveHash;
   var tuples;
 
+  const BATCH_LENGTH = 500;
+
   before(async function () {
     //load dump tuples from json file into memory
     const jsonFile = fs.readFileSync(path.join(__dirname, "dump.json")).toString('utf-8');
@@ -37,9 +39,12 @@ describe("Token and Backup contract testing", function () {
     admin = (await ethers.getSigners())[0];
     var factory = await ethers.getContractFactory("ZTESTBackupVault");    
     ZTESTBackupVault = await factory.deploy(admin, dumpRecursiveHash);
+    console.log(`Contract deployed at: ${ZTESTBackupVault.target}`);
+    const receipt = await ZTESTBackupVault.deploymentTransaction().wait(); // Wait for confirmation
+    printReceipt("Deploy of backup contract",receipt);
   });
 
-  it("Store backup balances in the contract (in batches of 5)", async function () {
+  it("Store backup balances in the contract (in batches of "+BATCH_LENGTH+")", async function () {
     var addresses = [];
     var balances = [];
     var calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -48,9 +53,10 @@ describe("Token and Backup contract testing", function () {
       addresses.push(key);
       balances.push(value);
       calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, key, value);
-      if (addresses.length == 5){
+      if (addresses.length == BATCH_LENGTH){
         console.log("Inserting batch: "+batchNumber);
-        await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
+        var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
+        printReceipt("Batch insert "+batchNumber, await res.wait());
         batchNumber++;
         addresses = [];
         balances = [];
@@ -58,7 +64,8 @@ describe("Token and Backup contract testing", function () {
     }
     if (addresses.length>0){
       console.log("Inserting batch: "+batchNumber);
-      await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
+      var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
+      printReceipt("Batch insert "+batchNumber, await res.wait());
     }
   });
 
@@ -71,17 +78,21 @@ describe("Token and Backup contract testing", function () {
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory("ZTEST");
     erc20 = await factory.deploy(await ZTESTBackupVault.getAddress());
+    const receipt = await erc20.deploymentTransaction().wait(); // Wait for confirmation
+    printReceipt("Deploy of ERC-20 contract",receipt);
   });
 
   it("Set ERC-20 contract reference in the backup contract", async function () {
-    await ZTESTBackupVault.setERC20(await erc20.getAddress());    
+    var res = await ZTESTBackupVault.setERC20(await erc20.getAddress());    
+    printReceipt("Set ERC-20 reference in vault", await res.wait());
   });
 
   it("Call distribute() and check distributed balances", async function () {
     var round = 0;
     while (await ZTESTBackupVault.moreToDistribute()){
       console.log("distribution round: "+round);
-      await ZTESTBackupVault.distribute(); 
+      var res = await ZTESTBackupVault.distribute(); 
+      printReceipt("Distribution round "+round, await res.wait());
       round++; 
     }
      
@@ -94,5 +105,16 @@ describe("Token and Backup contract testing", function () {
   it("If we have distributed everything, no more distribution can happen", async function () {
     expect(ZTESTBackupVault.distribute()).to.be.revertedWith("Nothing to distribute");
   });
+
+  function printReceipt(name, receipt){
+    console.log(">>>> "+name);
+    const gasUsed = receipt.gasUsed; // Gas units consumed
+    const gasPrice = receipt.gasPrice; // Gas price in wei per unit
+    const totalGasCost = gasUsed * gasPrice; // Total cost in wei
+    console.log(`Tx hash: ${receipt.hash}`);
+    console.log(`Gas Used: ${gasUsed}`);
+    console.log(`Gas Price: ${gasPrice}`);
+    console.log(`Total Gas Cost: ${ethers.formatEther(totalGasCost)} ETH`);
+  }
   
 });
