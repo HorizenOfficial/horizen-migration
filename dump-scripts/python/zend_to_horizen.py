@@ -55,7 +55,7 @@ with open(zend_dump_file_name, 'r') as zend_dump_file:
 		else:
 			results[decoded_address] = balance_in_wei
 
-print("Total balance from Zend: {}".format(total_balance))
+print("Total balance migrated from Zend: {}".format(total_balance))
 
 sorted_accounts = collections.OrderedDict(sorted(results.items()))
 
