@@ -119,8 +119,8 @@ contract ZTESTZendBackupVault  {
         if (balances[zenAddress].distributed == true) revert AlreadyClaimed(zenAddress);
         uint256 amount = balances[zenAddress].amount;
         if(amount == 0) revert NothingToClaim(zenAddress);
-        zenToken.mint(destAddress, amount);
         balances[zenAddress].distributed = true;
+        zenToken.mint(destAddress, amount);
         emit Claimed(destAddress, zenAddress, amount);   
     }
 
