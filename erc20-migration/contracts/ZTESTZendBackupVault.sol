@@ -10,21 +10,16 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 ///         In the constructor will receive an admin address, the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
 contract ZTESTZendBackupVault  {
-
-    struct Balances {
-        uint256 amount;
-        bool distributed;
-    }
     
     // Map of the claimable balances.
     // The key is the zendAddress in bs58 decoded format
-    mapping(bytes20 => Balances) public balances;
+    mapping(bytes20 => uint256) public balances;
        
     // Cumulative Hash calculated
-    bytes32 private _cumulativeHash;
+    bytes32 public _cumulativeHash;
 
     // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock claim
-    bytes32 private cumulativeHashCheckpoint;
+    bytes32 public cumulativeHashCheckpoint;
        
     // admin authority
     address public admin;
@@ -39,9 +34,7 @@ contract ZTESTZendBackupVault  {
     error ArrayLengthMismatch();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
-    error AlreadyClaimed(bytes20 zenAddress);
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
-
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to perform restore operations
@@ -61,25 +54,15 @@ contract ZTESTZendBackupVault  {
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
     function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory zendAddresses, uint256[] memory values) public {
-        if (msg.sender != admin) revert UnauthorizedOperation();               
+        if (msg.sender != admin) revert UnauthorizedOperation();     
         if (zendAddresses.length != values.length) revert ArrayLengthMismatch();
         uint256 i;
         while (i != zendAddresses.length) {
-            balances[zendAddresses[i]] = Balances({amount: values[i], distributed: false});
+            balances[zendAddresses[i]] = values[i];
             _cumulativeHash = keccak256(abi.encode(_cumulativeHash, zendAddresses[i], values[i]));
             unchecked { ++i; }
         }
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
-    }
-
-    /// @notice Return the claimable balance data associated with a zendAddress
-    function getBalance(bytes20 zendAddress) public view returns (Balances memory) {
-        return balances[zendAddress];
-    }
-    
-    /// @notice Return the cumulativeHash  calculated so far
-    function getCumulativeHash() public view returns (bytes32) {
-        return _cumulativeHash;
     }
 
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
@@ -116,10 +99,9 @@ contract ZTESTZendBackupVault  {
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
         VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
 
-        if (balances[zenAddress].distributed == true) revert AlreadyClaimed(zenAddress);
-        uint256 amount = balances[zenAddress].amount;
-        if(amount == 0) revert NothingToClaim(zenAddress);
-        balances[zenAddress].distributed = true;
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
+        balances[zenAddress] = 0;
         zenToken.mint(destAddress, amount);
         emit Claimed(destAddress, zenAddress, amount);   
     }

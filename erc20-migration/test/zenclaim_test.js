@@ -96,7 +96,7 @@ describe("ZEND Claim test", function () {
   });
 
   it("Check recursive hash from the contract matches with the local one", async function () {
-    var cumulativeHashFromContract = await ZTESTZendBackupVault.getCumulativeHash();
+    var cumulativeHashFromContract = await ZTESTZendBackupVault._cumulativeHash();
     expect(dumpRecursiveHash).to.equal(cumulativeHashFromContract);
   });  
 
@@ -126,7 +126,7 @@ describe("ZEND Claim test", function () {
 
   it("Check double-claim protection", async function () {
     await expect(ZTESTZendBackupVault.claimP2PKH(TEST2_DESTINATION_ADDRESS, "0x"+TEST2_SIGNATURE_HEX, "0x"+TEST2_PUBLICKEY_X, "0x"+TEST2_PUBLICKEY_Y))
-         .to.be.revertedWithCustomError(ZTESTZendBackupVault, "AlreadyClaimed")
+         .to.be.revertedWithCustomError(ZTESTZendBackupVault, "NothingToClaim")
   });
 
 });
