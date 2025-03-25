@@ -7,7 +7,7 @@ import base58
 """
 This python script will require the following input parameters:
 - zend dump csv file created from zend dump script
-- zend list for horizen 2 file created with horizen 2 zend_to_horizen.py script
+- zend accounts list for Horizen 2 file, created with Horizen 2 zend_to_horizen.py script
 
 It will compare addresses and balances between these 2 files.
 If something goes wrong (balances don't match or an address is missing) it will be printed in terminal.
@@ -48,7 +48,7 @@ def validate_zend_data(zend_dump_file_name, horizen2_zend_file_name):
                 else:
                     set_failed_execution()
                     del horizen2_zend_data[decoded_address]
-                    print(f"Zend address {zend_address} - decoded {decoded_address}  balances do not match. Horizen2 data: {horizen2_zend_address_balance} wei. Zend dump: {zend_address_balance_wei} wei.")
+                    print(f"Zend address {zend_address} - decoded {decoded_address} balances do not match. Horizen2 data: {horizen2_zend_address_balance} wei. Zend dump: {zend_address_balance_wei} wei.")
             else:
                 set_failed_execution()
                 print(f"Zend address {zend_address} - decoded {decoded_address} present in Zend dump file {zend_dump_file_name}"
@@ -58,7 +58,7 @@ def validate_zend_data(zend_dump_file_name, horizen2_zend_file_name):
             if zend_address_balance != horizen2_zend_data[zend_address]:
                set_failed_execution()
                print(
-                    f"Decoded zend address {zend_address}  balances do not match. Horizen2 data: {horizen2_zend_data[zend_address]} wei. Zend dump: {zend_address_balance} wei.")
+                    f"Decoded zend address {zend_address} balances do not match. Horizen2 data: {horizen2_zend_data[zend_address]} wei. Zend dump: {zend_address_balance} wei.")
             del horizen2_zend_data[zend_address]
 
         # Here the only addresses left are not present in zend csv file

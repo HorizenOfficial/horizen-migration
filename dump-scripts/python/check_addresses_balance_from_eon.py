@@ -6,7 +6,7 @@ import json
 """
 This python script will require the following 3 input parameters:
 - EON dump json file, created by "zen_dump" rpc command 
-- EON stakes list json file,  created by get_all_forger_stakes.py script
+- EON stakes list json file, created by get_all_forger_stakes.py script
 - Horizen 2 json file created by setup_eon2_json.py script
 
 It will compare addresses and balances between Horizen 2 file and EON dumps.
@@ -50,7 +50,7 @@ def update_eon_dump_with_stakes(eon_dump_data, eon_stakes_data):
 def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, horizen2_file_name):
     with open(eon_dump_file_name, 'r') as eon_dump_file, open(horizen2_file_name, 'r') as horizen2_file, open(eon_stakes_file_name, 'r') as eon_stakes_file:
         eon_dump = json.load(eon_dump_file)
-        horizen2_genesis_eon_data = json.load(horizen2_file)
+        horizen2_eon_data = json.load(horizen2_file)
 
         eon_dump_data = eon_dump["accounts"]
         eon_stakes_data = json.load(eon_stakes_file)
@@ -58,25 +58,25 @@ def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, horizen2_file_na
         eon_dump_data = update_eon_dump_with_stakes(eon_dump_data, eon_stakes_data)
         counter = 0
 
-        for horizen2_eon_address, horizen2_eon_address_balance in horizen2_genesis_eon_data.items():
+        for horizen2_eon_address, horizen2_eon_address_balance in horizen2_eon_data.items():
             counter = counter + 1
             if horizen2_eon_address in eon_dump_data:
                 eon_address_balance = int(eon_dump_data[horizen2_eon_address]['balance'])
                 if horizen2_eon_address_balance != eon_address_balance:
                     set_failed_execution()
-                    print(f"EON address {horizen2_eon_address} balances do not match. Horizen2 genesis data: {horizen2_eon_address_balance} wei. EON dump data: {eon_address_balance} wei.")
+                    print(f"EON address {horizen2_eon_address} balances do not match. Horizen2 data: {horizen2_eon_address_balance} wei. EON dump data: {eon_address_balance} wei.")
             else:
                 set_failed_execution()
-                print(f"EON address {horizen2_eon_address} present in Horizen2 genesis file {horizen2_file_name} not found in EON dump data file {eon_dump_file_name}.")
+                print(f"EON address {horizen2_eon_address} present in Horizen2 file {horizen2_file_name} not found in EON dump data file {eon_dump_file_name}.")
 
         
         counter_inverse = 0
         for eon_address in eon_dump_data:
             if not(is_filtered_account(eon_address, eon_dump_data)):
                 counter_inverse = counter_inverse + 1
-            if eon_address not in horizen2_genesis_eon_data and not is_filtered_account(eon_address, eon_dump_data):
+            if eon_address not in horizen2_eon_data and not is_filtered_account(eon_address, eon_dump_data):
                 set_failed_execution()
-                print(f"EON address {eon_address} present in EON dump data file {eon_dump_file_name} not found in Horizen2 genesis file {horizen2_file_name}.")
+                print(f"EON address {eon_address} present in EON dump data file {eon_dump_file_name} not found in Horizen2 file {horizen2_file_name}.")
         
         assert counter > 0
         assert counter == counter_inverse

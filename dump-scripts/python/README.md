@@ -45,7 +45,7 @@ Usage:
 $ python3 zend_to_horizen.py <zend csv dump file> <output_file>
 ```
 
-The output is a json file with a list of `"decoded address":"balance"` items.
+The output is a json file with a list of `"decoded address":"balance"` items, alphabetically ordered.
 
 
 ## setup_eon2_json.py
@@ -62,4 +62,5 @@ $ python3 setup_eon2_json.py <eon dump file> <eon stake file> <output_file>
 * `<eon stake file>` is the json file created calling get_all_forger_stakes.py script.
 * `<output_file>` is the path of the output.
 
-The script creates, as output, a json file in plain format.
+The script creates, as output, a json file in plain format, with a list of `"address":"balance"` items, 
+alphabetically ordered. Only the amounts belonging to EOA accounts are included in the file.
