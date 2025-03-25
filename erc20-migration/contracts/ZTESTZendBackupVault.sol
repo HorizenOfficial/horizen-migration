@@ -57,11 +57,13 @@ contract ZTESTZendBackupVault  {
         if (msg.sender != admin) revert UnauthorizedOperation();     
         if (zendAddresses.length != values.length) revert ArrayLengthMismatch();
         uint256 i;
+        bytes32 auxHash = _cumulativeHash;
         while (i != zendAddresses.length) {
             balances[zendAddresses[i]] = values[i];
-            _cumulativeHash = keccak256(abi.encode(_cumulativeHash, zendAddresses[i], values[i]));
+            auxHash = keccak256(abi.encode(auxHash, zendAddresses[i], values[i]));
             unchecked { ++i; }
         }
+        _cumulativeHash = auxHash;
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
     }
 
