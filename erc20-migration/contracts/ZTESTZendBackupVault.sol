@@ -110,7 +110,8 @@ contract ZTESTZendBackupVault  {
         }else{
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
-        string memory asString = Strings.toHexString(uint256(uint160(destAddress)), 20);
+        //signed message suppose address in EIP-55 format for lowercase and uppercase chars
+        string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
         VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
