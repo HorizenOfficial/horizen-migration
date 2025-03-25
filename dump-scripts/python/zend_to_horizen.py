@@ -11,6 +11,8 @@ This script transforms the balances data dumped from zend in the format requeste
 Specifically:
  - the zend addresses are Base58 decoded and the prefix is removed 
  - the balances are converted from satoshis (or "zennies") to weis.
+It may happen that multiple Zend addresses were created from the same public key. In this case, all the balances are
+added to the same decoded address (that, in the end, it is a double hash of the pub key). 
 It requires as input a csv with the following format:
  <zend address, balance in satoshi>
 It creates as output another json file with the format:
