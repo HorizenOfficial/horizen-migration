@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 import "./interfaces/IERC20Mintable.sol";
 import {VerificationLibrary} from  './VerificationLibrary.sol';
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZTESTZendBackupVault
 /// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allow  manual claimining in the new chain.
-///         In the constructor will receive an admin address, the only entity authorized to perform load operations, and a cumulative hash 
+///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
-contract ZTESTZendBackupVault  {
+contract ZTESTZendBackupVault is Ownable {
     
     // Map of the claimable balances.
     // The key is the zendAddress in bs58 decoded format
@@ -20,9 +21,6 @@ contract ZTESTZendBackupVault  {
 
     // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock claim
     bytes32 public cumulativeHashCheckpoint;
-       
-    // admin authority
-    address public admin;
 
     IERC20Mintable public zenToken;
 
@@ -42,10 +40,8 @@ contract ZTESTZendBackupVault  {
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
-    constructor(address _admin, bytes32 _cumulativeHashCheckpoint) {
-        if(_admin == address(0)) revert AddressNotValid();
+    constructor(address _admin, bytes32 _cumulativeHashCheckpoint) Ownable(_admin) {
         if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();   
-        admin = _admin;
         _cumulativeHash = bytes32(0);
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
     }
@@ -53,8 +49,7 @@ contract ZTESTZendBackupVault  {
     /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
-    function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory zendAddresses, uint256[] memory values) public {
-        if (msg.sender != admin) revert UnauthorizedOperation();     
+    function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory zendAddresses, uint256[] memory values) public onlyOwner {
         if (zendAddresses.length != values.length) revert ArrayLengthMismatch();
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
@@ -68,8 +63,7 @@ contract ZTESTZendBackupVault  {
     }
 
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
-    function setERC20(address addr) public {
-        if (msg.sender != admin) revert UnauthorizedOperation();     
+    function setERC20(address addr) public onlyOwner {
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
         zenToken = IERC20Mintable(addr);
