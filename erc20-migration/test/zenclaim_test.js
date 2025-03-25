@@ -81,18 +81,15 @@ describe("ZEND Claim test", function () {
   });
 
   it("Store backup balances in the contract", async function () {
-    var addresses = [];
-    var balances = [];
+    var addressesValues = [];
     var calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-    addresses.push(TEST1_ZEND_ADDRESS);
-    balances.push(TEST1_VALUE);
+    addressesValues.push({addr: TEST1_ZEND_ADDRESS, value: TEST1_VALUE});
     calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST1_ZEND_ADDRESS, TEST1_VALUE);
-    addresses.push(TEST2_ZEND_ADDRESS);
-    balances.push(TEST2_VALUE);
+    addressesValues.push({addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE});
     calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
 
-    await ZTESTZendBackupVault.batchInsert(calcCumulativeHash, addresses, balances); 
+    await ZTESTZendBackupVault.batchInsert(calcCumulativeHash, addressesValues); 
   });
 
   it("Check recursive hash from the contract matches with the local one", async function () {

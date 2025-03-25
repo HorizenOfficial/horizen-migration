@@ -11,6 +11,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 ///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
 contract ZTESTZendBackupVault is Ownable {
+
+    struct AddressValue {
+        bytes20 addr;
+        uint256 value;
+    }
     
     // Map of the claimable balances.
     // The key is the zendAddress in bs58 decoded format
@@ -29,7 +34,6 @@ contract ZTESTZendBackupVault is Ownable {
     error AddressNotValid();
     error CumulativeHashNotValid();
     error UnauthorizedOperation();
-    error ArrayLengthMismatch();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
@@ -49,13 +53,12 @@ contract ZTESTZendBackupVault is Ownable {
     /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
-    function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory zendAddresses, uint256[] memory values) public onlyOwner {
-        if (zendAddresses.length != values.length) revert ArrayLengthMismatch();
+    function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
-        while (i != zendAddresses.length) {
-            balances[zendAddresses[i]] = values[i];
-            auxHash = keccak256(abi.encode(auxHash, zendAddresses[i], values[i]));
+        while (i != addressValues.length) {
+            balances[addressValues[i].addr] = addressValues[i].value;
+            auxHash = keccak256(abi.encode(auxHash, addressValues[i].addr, addressValues[i].value));
             unchecked { ++i; }
         }
         _cumulativeHash = auxHash;
