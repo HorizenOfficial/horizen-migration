@@ -45,8 +45,8 @@ contract ZTESTZendBackupVault  {
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to perform restore operations
-    /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calcolated with all the dump data.
-    ///                                   Will be used to verify the consinstency of the restored data, and as
+    /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calculated with all the dump data.
+    ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
     constructor(address _admin, bytes32 _cumulativeHashCheckpoint) {
@@ -57,7 +57,7 @@ contract ZTESTZendBackupVault  {
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
     }
 
-    /// @notice Insert a new bach of tuples (bytes20, value) and updates the cumulative hash.
+    /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
     function batchInsert(bytes32 expectedCumulativeHash, bytes20[] memory zendAddresses, uint256[] memory values) public {
@@ -72,7 +72,7 @@ contract ZTESTZendBackupVault  {
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
     }
 
-    /// @notice Return the claimable balance data associated with a zendAddresses
+    /// @notice Return the claimable balance data associated with a zendAddress
     function getBalance(bytes20 zendAddress) public view returns (Balances memory) {
         return balances[zendAddress];
     }
@@ -91,7 +91,7 @@ contract ZTESTZendBackupVault  {
     }
 
     /// @notice Claim a P2PKH balance.
-    ///         destAddress is the receiver of the founds
+    ///         destAddress is the receiver of the funds
     ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)

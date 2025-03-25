@@ -15,7 +15,7 @@ library VerificationLibrary {
         uint8 v;
     }
 
-    /// @notice Parse a ZEND signature from it's byte representation.
+    /// @notice Parse a ZEND signature from its byte representation.
     ///         First byte represents the v field, then 32 bytes for r field and 32 bytes for s field
     function parseZendSignature(bytes memory hexSignature) internal pure returns (Signature memory){
         require(hexSignature.length == 65, "Signature must be 65 bytes long");
@@ -39,7 +39,7 @@ library VerificationLibrary {
         }
         address msgSigner = ecrecover(messageHash, v_ethereumFormat, signature.r, signature.s);
 
-        //generate an ethereum eddress form the pubkey
+        //generate an ethereum address from the pubkey
          bytes32 hash = keccak256(abi.encodePacked(pubKeyX, pubKeyY));
         address ethAddress = address(uint160(uint256(hash)));
 
