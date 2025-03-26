@@ -37,7 +37,17 @@ contract ZTESTZendBackupVault is Ownable {
     error UnauthorizedOperation();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
+    error InsufficientSignatures(uint256 number, uint256 required);
+    error InvalidSignatureArrayLength();
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
+
+    /// @notice verify if we are in the state in which users can already claim
+    modifier canClaim(address destAddress) {
+        if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked 
+        if (address(zenToken) == address(0)) revert ERC20NotSet();
+        if (address(destAddress) == address(0)) revert AddressNotValid();
+        _;
+    }
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to perform restore operations
@@ -81,11 +91,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
-    function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public {
-        if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked 
-        if (address(zenToken) == address(0)) revert ERC20NotSet();
-        if (address(destAddress) == address(0)) revert AddressNotValid();
-
+    function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public canClaim(destAddress) {
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
@@ -109,6 +115,65 @@ contract ZTESTZendBackupVault is Ownable {
         zenToken.mint(destAddress, amount);
         emit Claimed(destAddress, zenAddress, amount);   
     }
+    
+    /// @notice Claim a P2SH balance.
+    ///         destAddress is the receiver of the funds
+    ///         hexSignatures is the array of the signatures of the claiming message. Must be generated in a compressed format to claim a zend address
+    ///
+    ///         IMPORTANT: the array should have as length the number of public keys in the script. The signature in the "i" position should be the signature for the "i"
+    ///         pub key in the order it appears in the script. If the signature is not present for that key, it could be zero or invalid signature.
+    ///         This is to avoid duplicated signatures without expensive checks.
+    ///
+    ///         script is the script to claim, from which pubKeys will be extractted
+    ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
+    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script) public canClaim(destAddress) {
 
+        (bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) = _extractPubKeysFromScript(script);
+        if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
+        uint256 minSignatures = _extractMinSignaturesFromScript(script);
+        bytes20 zenAddress = _extractZenAddressFromScript(script);
+        
+        //check amount to claim
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
+
+        //signed message suppose address in EIP-55 format for lowercase and uppercase chars
+        string memory asString = Strings.toChecksumHexString(destAddress);
+        string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
+        bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
+
+        //check signatures
+        uint256 validSignatures;
+        uint256 i;
+        while(i != hexSignatures.length) {
+            VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
+            //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
+            if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeysX[i], pubKeysY[i])) {
+                ++validSignatures;
+            }
+            unchecked { ++i; }
+        }
+
+        if(validSignatures < minSignatures) revert InsufficientSignatures(validSignatures, minSignatures); //insufficient signatures
+
+        balances[zenAddress] = 0;
+        zenToken.mint(destAddress, amount);
+        emit Claimed(destAddress, zenAddress, amount);   
+    }
+
+    /// @notice extract public keys from multisignature script. Two separate arrays are returned since it should be a 64-bit
+    function _extractPubKeysFromScript(bytes memory /*script*/) internal pure returns(bytes32[] memory, bytes32[] memory) {
+        return (new bytes32[](0), new bytes32[](0)); //TODO
+    }
+
+    /// @notice extract zen address from multisignature script
+    function _extractZenAddressFromScript(bytes memory /*script*/) internal pure returns(bytes20) {
+        return 0x00000000000000000000; //TODO
+    }
+
+    /// @notice extract min number of required signatures from multisignature script
+    function _extractMinSignaturesFromScript(bytes memory /*script*/) internal pure returns(uint256) {
+        return 0; //TODO
+    }
 
 }

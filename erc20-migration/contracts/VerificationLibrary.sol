@@ -29,7 +29,7 @@ library VerificationLibrary {
         return Signature({r: r, s: s, v: v});
     }
 
-    function verifyZendSignature(bytes32 messageHash, Signature memory signature, bytes32 pubKeyX, bytes32 pubKeyY) internal pure {
+    function verifyZendSignatureBool(bytes32 messageHash, Signature memory signature, bytes32 pubKeyX, bytes32 pubKeyY) internal pure returns(bool) {
         uint8 v_ethereumFormat;
         if (signature.v == 31 || signature.v==32){
             //zend signature from compressed pubkey has +4 in the first byte,  but ethereum does not expect this
@@ -43,7 +43,11 @@ library VerificationLibrary {
          bytes32 hash = keccak256(abi.encodePacked(pubKeyX, pubKeyY));
         address ethAddress = address(uint160(uint256(hash)));
 
-        if(msgSigner == address(0) || msgSigner != ethAddress) revert InvalidSignature();
+        return msgSigner != address(0) && msgSigner == ethAddress; 
+    }
+
+    function verifyZendSignature(bytes32 messageHash, Signature memory signature, bytes32 pubKeyX, bytes32 pubKeyY) internal pure {
+        if(!verifyZendSignatureBool(messageHash, signature, pubKeyX, pubKeyY)) revert InvalidSignature();
     }
 
     /// @notice Create a message hash compatible with ZEND format from an arbitrary message string.
