@@ -24,8 +24,8 @@ contract ZTESTBackupVault is Ownable {
     // Cumulative Hash calculated
     bytes32 public _cumulativeHash;
 
-    // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock distribution
-    bytes32 public immutable  cumulativeHashCheckpoint;      
+    // Final expected Cumulative Hash, used for checkpoint, to unlock distribution
+    bytes32 public cumulativeHashCheckpoint;      
   
     // Tracks rewarded addresses (next address to reward)
     uint256 private nextRewardIndex;
@@ -35,6 +35,7 @@ contract ZTESTBackupVault is Ownable {
     error AddressNotValid();
     error CumulativeHashNotValid();
     error CumulativeHashCheckpointReached();
+    error CumulativeHashCehckpointNotSet();
     error UnauthorizedOperation();
     error ERC20NotSet();
     error NothingToDistribute();
@@ -42,20 +43,26 @@ contract ZTESTBackupVault is Ownable {
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to performe restore and distribution operations
+    constructor(address _admin) Ownable(_admin) {   
+        _cumulativeHash = bytes32(0);        
+        nextRewardIndex = 0;
+    }
+
+    /// @notice Set expected cumulative hash after all the data has been loaded
     /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calculated with all the dump data.
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
     ///                                   can start
-    constructor(address _admin, bytes32 _cumulativeHashCheckpoint) Ownable(_admin) {
-        if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();   
-        _cumulativeHash = bytes32(0);
+    function setCumulativeHashCeckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
+        if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();  
+        if (cumulativeHashCheckpoint != bytes32(0)) revert UnauthorizedOperation();  //already set
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
-        nextRewardIndex = 0;
     }
 
     /// @notice Insert a new batch of tuples (address, value) and updates the cumulative hash.
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
+        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCehckpointNotSet();  
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
         if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
