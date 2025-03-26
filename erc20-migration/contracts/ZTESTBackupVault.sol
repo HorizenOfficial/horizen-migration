@@ -44,8 +44,6 @@ contract ZTESTBackupVault is Ownable {
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to performe restore and distribution operations
     constructor(address _admin) Ownable(_admin) {   
-        _cumulativeHash = bytes32(0);        
-        nextRewardIndex = 0;
     }
 
     /// @notice Set expected cumulative hash after all the data has been loaded
