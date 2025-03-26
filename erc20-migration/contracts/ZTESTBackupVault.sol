@@ -2,33 +2,31 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20Mintable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZTESTBackupVault
 /// @notice This contract is used to store balances from old EON chain, and, once all are loaded, distribute corresponding ZEN in the new chain.
-///         In the constructor will receive an admin address, the only entity authorized to perform operations, and a cumulative hash 
+///         In the constructor will receive an admin address (owner) , the only entity authorized to perform operations, and a cumulative hash 
 ///         calcolated with all the dump data.
-contract ZTESTBackupVault  {
+contract ZTESTBackupVault is Ownable {
 
-    struct Balances {
-        uint256 amount;
-        bool distributed;
+    struct AddressValue {
+        address addr;
+        uint256 value;
     }
     
     // Map of the balances
-    mapping(address => Balances) public balances;
+    mapping(address => uint256) public balances;
     
     // Array to track inserted addresses
     address[] private addressList;
     
     // Cumulative Hash calculated
-    bytes32 private _cumulativeHash;
+    bytes32 public _cumulativeHash;
 
     // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock distribution
-    bytes32 private cumulativeHashCheckpoint;
-       
-    // admin authority
-    address public admin;
-    
+    bytes32 public immutable  cumulativeHashCheckpoint;      
+  
     // Tracks rewarded addresses (next address to reward)
     uint256 private nextRewardIndex;
 
@@ -36,55 +34,43 @@ contract ZTESTBackupVault  {
 
     error AddressNotValid();
     error CumulativeHashNotValid();
+    error CumulativeHashCheckpointReached();
     error UnauthorizedOperation();
-    error ArrayLengthMismatch();
     error ERC20NotSet();
     error NothingToDistribute();
 
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to performe restore and distribution operations
-    /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calcolated with all the dump data.
-    ///                                   Will be used to verify the consinstency of the restored data, and as
+    /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calculated with all the dump data.
+    ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
     ///                                   can start
-    constructor(address _admin, bytes32 _cumulativeHashCheckpoint) {
-        if(_admin == address(0)) revert AddressNotValid();
+    constructor(address _admin, bytes32 _cumulativeHashCheckpoint) Ownable(_admin) {
         if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();   
-        admin = _admin;
         _cumulativeHash = bytes32(0);
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
         nextRewardIndex = 0;
     }
 
-    /// @notice Insert a new bach of tuples (address, value) and updates the cumulative hash.
+    /// @notice Insert a new batch of tuples (address, value) and updates the cumulative hash.
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
-    function batchInsert(bytes32 expectedCumulativeHash, address[] memory addresses, uint256[] memory values) public {
-        if (msg.sender != admin) revert UnauthorizedOperation();               
-        if (addresses.length != values.length) revert ArrayLengthMismatch();
+    function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
         uint256 i;
-        while (i != addresses.length) {
-            balances[addresses[i]] = Balances({amount: values[i], distributed: false});
-            addressList.push(addresses[i]);
-            _cumulativeHash = keccak256(abi.encode(_cumulativeHash, addresses[i], values[i]));
+        bytes32 auxHash = _cumulativeHash;
+        if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
+        while (i != addressValues.length) {
+            balances[addressValues[i].addr] = addressValues[i].value;
+            addressList.push(addressValues[i].addr);
+            auxHash = keccak256(abi.encode(auxHash, addressValues[i].addr, addressValues[i].value));
             unchecked { ++i; }
         }
+        _cumulativeHash = auxHash;
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
     }
 
-    /// @notice Return the balance data associated with an address
-    function getBalance(address addr) public view returns (Balances memory) {
-        return balances[addr];
-    }
-    
-    /// @notice Return the cumulativeHash  calculated so far
-    function getCumulativeHash() public view returns (bytes32) {
-        return _cumulativeHash;
-    }
-
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
-    function setERC20(address addr) public {
-        if (msg.sender != admin) revert UnauthorizedOperation();     
+    function setERC20(address addr) public onlyOwner {  
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
         zenToken = IERC20Mintable(addr);
@@ -92,8 +78,7 @@ contract ZTESTBackupVault  {
     
     /// @notice Distribute ZEN for the next (max) 500 addresses, until we have reached the end of the list
     ///         Can be executed only when we have reached the planned cumulativeHashCheckpoint (meaning all data has been loaded)
-    function distribute() public  {
-        if (msg.sender != admin) revert UnauthorizedOperation();     
+    function distribute() public onlyOwner {
         if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked
         if (address(zenToken) == address(0)) revert ERC20NotSet();
         if (nextRewardIndex == addressList.length) revert NothingToDistribute();
@@ -101,9 +86,10 @@ contract ZTESTBackupVault  {
         uint256 count = 0;
         while (nextRewardIndex < addressList.length && count < 500) {
             address addr = addressList[nextRewardIndex];      
-            if (balances[addr].amount > 0 && balances[addr].distributed == false) {
-                zenToken.mint(addr, balances[addr].amount);
-                balances[addr].distributed = true;
+            uint256 amount = balances[addr];
+            if (amount > 0) {                
+                balances[addr] = 0;
+                zenToken.mint(addr, amount);
             }
             nextRewardIndex++;
             count++;
@@ -111,8 +97,7 @@ contract ZTESTBackupVault  {
     }
 
     /// @notice Return true if admin is able to distribute more
-    function moreToDistribute() public view returns (bool) {
-        if (msg.sender != admin) revert UnauthorizedOperation();     
+    function moreToDistribute() public view  returns (bool) { 
         return _cumulativeHash != bytes32(0) &&
                 _cumulativeHash == cumulativeHashCheckpoint && 
                   nextRewardIndex <  addressList.length;

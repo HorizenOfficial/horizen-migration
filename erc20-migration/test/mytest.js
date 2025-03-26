@@ -45,32 +45,29 @@ describe("Token and EON Backup contract testing", function () {
   });
 
   it("Store backup balances in the contract (in batches of "+BATCH_LENGTH+")", async function () {
-    var addresses = [];
-    var balances = [];
+    var addressesValues = [];
     var calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
     var batchNumber = 0;
-    for (const [key, value] of tuples) {
-      addresses.push(key);
-      balances.push(value);
-      calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, key, value);
-      if (addresses.length == BATCH_LENGTH){
+    for (const [key, val] of tuples) {
+      addressesValues.push({addr: key, value: val});
+      calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, key, val);
+      if (addressesValues.length == BATCH_LENGTH){
         console.log("Inserting batch: "+batchNumber);
-        var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
+        var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addressesValues);
         printReceipt("Batch insert "+batchNumber, await res.wait());
         batchNumber++;
-        addresses = [];
-        balances = [];
+        addressesValues = [];
       }
     }
-    if (addresses.length>0){
+    if (addressesValues.length > 0){
       console.log("Inserting batch: "+batchNumber);
-      var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addresses, balances);
+      var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addressesValues);
       printReceipt("Batch insert "+batchNumber, await res.wait());
     }
   });
 
   it("Check recursive hash from the contract matches with the local one", async function () {
-    var cumulativeHashFromContract = await ZTESTBackupVault.getCumulativeHash();
+    var cumulativeHashFromContract = await ZTESTBackupVault._cumulativeHash();
     console.log("Hash from the contract: "+cumulativeHashFromContract);
     expect(dumpRecursiveHash).to.equal(cumulativeHashFromContract);
   });  
