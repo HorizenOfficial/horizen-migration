@@ -92,6 +92,11 @@ describe("ZEND Claim test", function () {
     await ZTESTZendBackupVault.batchInsert(calcCumulativeHash, addressesValues); 
   });
 
+  it("Check store balances fails if cumulative hash checkpoint reached", async function () {
+    var calcCumulativeHash = updateCumulativeHash(dumpRecursiveHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
+    await expect(ZTESTZendBackupVault.batchInsert(calcCumulativeHash, [{addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE}])).to.be.revertedWithCustomError(ZTESTZendBackupVault, "CumulativeHashCheckpointReached");
+  });
+
   it("Check recursive hash from the contract matches with the local one", async function () {
     var cumulativeHashFromContract = await ZTESTZendBackupVault._cumulativeHash();
     expect(dumpRecursiveHash).to.equal(cumulativeHashFromContract);
@@ -104,6 +109,10 @@ describe("ZEND Claim test", function () {
 
   it("Set ERC-20 contract reference in the backup contract", async function () {
     await ZTESTZendBackupVault.setERC20(await erc20.getAddress());    
+  });
+
+  it("Cannot set again ERC-20 contract reference in the backup contract", async function () {
+    await expect(ZTESTZendBackupVault.setERC20(await erc20.getAddress())).to.be.revertedWithCustomError(ZTESTZendBackupVault, "UnauthorizedOperation");    
   });
 
   it("Claim of a P2PKH uncompressed", async function () {

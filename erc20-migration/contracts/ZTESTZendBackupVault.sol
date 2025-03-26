@@ -25,7 +25,7 @@ contract ZTESTZendBackupVault is Ownable {
     bytes32 public _cumulativeHash;
 
     // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock claim
-    bytes32 public cumulativeHashCheckpoint;
+    bytes32 public immutable cumulativeHashCheckpoint;
 
     IERC20Mintable public zenToken;
 
@@ -33,6 +33,7 @@ contract ZTESTZendBackupVault is Ownable {
 
     error AddressNotValid();
     error CumulativeHashNotValid();
+    error CumulativeHashCheckpointReached();
     error UnauthorizedOperation();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
@@ -56,6 +57,7 @@ contract ZTESTZendBackupVault is Ownable {
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
+        if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
         while (i != addressValues.length) {
             balances[addressValues[i].addr] = addressValues[i].value;
             auxHash = keccak256(abi.encode(auxHash, addressValues[i].addr, addressValues[i].value));
@@ -92,14 +94,17 @@ contract ZTESTZendBackupVault is Ownable {
         }else{
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
+
+        //check amount to claim
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
+
         //signed message suppose address in EIP-55 format for lowercase and uppercase chars
         string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
         VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
 
-        uint256 amount = balances[zenAddress];
-        if (amount == 0) revert NothingToClaim(zenAddress);
         balances[zenAddress] = 0;
         zenToken.mint(destAddress, amount);
         emit Claimed(destAddress, zenAddress, amount);   
