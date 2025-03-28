@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZTESTZendBackupVault
-/// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allow  manual claimining in the new chain.
+/// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allows  manual claiming in the new chain.
 ///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
 contract ZTESTZendBackupVault is Ownable {

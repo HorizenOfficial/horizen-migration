@@ -5,7 +5,8 @@ pragma solidity ^0.8.0;
 /// @notice Solidity Verification functions for signatures generated with Horizen ZEND mainchain.
 library VerificationLibrary {
 
-    error InvalidSignature();
+    error InvalidSignature();  //signature not correctly generated
+    error SignatureNotMatching();  //signature was correctly generated but public key not matching 
 
     bytes private constant MESSAGE_MAGIC_BYTES = bytes("Zcash Signed Message:\n");
 
@@ -38,12 +39,13 @@ library VerificationLibrary {
             v_ethereumFormat = signature.v;
         }
         address msgSigner = ecrecover(messageHash, v_ethereumFormat, signature.r, signature.s);
+        if(msgSigner == address(0)) revert InvalidSignature();
 
         //generate an ethereum address from the pubkey
          bytes32 hash = keccak256(abi.encodePacked(pubKeyX, pubKeyY));
         address ethAddress = address(uint160(uint256(hash)));
 
-        if(msgSigner == address(0) || msgSigner != ethAddress) revert InvalidSignature();
+        if(msgSigner != ethAddress) revert SignatureNotMatching();
     }
 
     /// @notice Create a message hash compatible with ZEND format from an arbitrary message string.
