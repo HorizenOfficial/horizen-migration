@@ -34,7 +34,7 @@ contract ZTESTZendBackupVault is Ownable {
     error AddressNotValid();
     error CumulativeHashNotValid();
     error CumulativeHashCheckpointReached();
-    error CumulativeHashCehckpointNotSet();
+    error CumulativeHashCheckpointNotSet();
     error UnauthorizedOperation();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
@@ -60,7 +60,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
-        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCehckpointNotSet();  
+        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
         if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
@@ -88,7 +88,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public {
-        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCehckpointNotSet();  
+        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked 
         if (address(zenToken) == address(0)) revert ERC20NotSet();
         if (address(destAddress) == address(0)) revert AddressNotValid();
