@@ -102,7 +102,7 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   }
 });
 
-task("restore", "Restores EON accounts", async (taskArgs, hre) => {
+task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
 
   if (process.env.EON_FILE == null) {
     console.error("EON_FILE environment variable not set: missing EON accounts file. Exiting.");
