@@ -4,7 +4,7 @@ import json
 
 
 """
-This python script will require the following 3 input parameters:
+This python script requires the following 3 input parameters:
 - EON dump json file, created by "zen_dump" rpc command 
 - EON stakes list json file, created by get_all_forger_stakes.py script
 - Horizen 2 json file created by setup_eon2_json.py script
@@ -20,6 +20,8 @@ Then the addresses and the balances related to EON will be checked in search of 
 
 """
 
+NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
+
 # Global variable to keep track of failed checks
 failed_horizen2_check = False
 def set_failed_execution():
@@ -27,9 +29,9 @@ def set_failed_execution():
     failed_horizen2_check = True
 
 
-# Filtered accounts are the ones with a 0 balance or the forger stakes native smart contract.
+# Filtered accounts are the ones with a 0 balance, smart contracts or the Null address.
 def is_filtered_account(account_address, eon_dump_data):
-    return ('code' in eon_dump_data[account_address]) or (int(eon_dump_data[account_address]['balance']) == 0)
+    return ('code' in eon_dump_data[account_address]) or (int(eon_dump_data[account_address]['balance']) == 0) or (account_address == NULL_ACCOUNT)
 
 
 # Update the EON balances with stakes, if the address is present in the EON dump update its balance otherwise add the address/balance pair

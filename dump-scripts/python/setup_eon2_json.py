@@ -12,9 +12,13 @@ It takes as input:
  - the output filename to be generated
 
 It creates a json file with the data from Eon in alphabetical order.
-Only accounts that aren't smart contracts are saved in the file.
+The following accounts are not saved in the file:
+ - accounts with 0 balance and no stakes 
+ - smart contract accounts 
+ - 0x0000000000000000000000000000000000000000 account
 """
 
+NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
 if len(sys.argv) != 4:
 	print(
@@ -42,7 +46,9 @@ for account in eon_dump_data['accounts']:
 	balance = int(source_account_data['balance'])
 	total_balance = total_balance + balance
 	if 'code' not in source_account_data:
-		if balance != 0:
+		if account == NULL_ACCOUNT:
+			total_filtered_balance = total_filtered_balance + balance
+		elif balance != 0:
 			results[account.lower()] = balance
 			total_restored_balance = total_restored_balance + balance
 	else:
@@ -59,7 +65,7 @@ for stake in eon_stakes_data.items():
 	account = stake[0].lower()
 	stake_amount = stake[1]
 	total_stakes = total_stakes + stake_amount
-	if account not in smart_contract_list:
+	if account not in smart_contract_list and account != NULL_ACCOUNT:
 		# Forger Stakes native smart contract balance is equal to all the stakes + any possible direct transfer.
 		# total_balance doesn't need to be updated because the stakes amount were already added before.
 		# If the stake belongs to an EOA, stake_amount needs to be added to total_restored_balance and to be removed
@@ -75,10 +81,10 @@ for stake in eon_stakes_data.items():
 	else:
 		print("Delegator {} is a smart contract".format(account))
 
-print("Total balance from EON (EOA + Contracts + Stakes):                  {}".format(total_balance))
-print("Total stakes:                                                       {}".format(total_stakes))
-print("Total balance from EON migrated (EOA + EOA Stakes):                 {}".format(total_restored_balance))
-print("Total balance from EON not restored (Contracts + Contracts Stakes): {}".format(total_filtered_balance))
+print("Total balance from EON (EOA + Contracts + Stakes):                                 {}".format(total_balance))
+print("Total stakes:                                                                      {}".format(total_stakes))
+print("Total balance from EON migrated (EOA + EOA Stakes):                                {}".format(total_restored_balance))
+print("Total balance from EON not restored (Contracts + Contracts Stakes + NULL address): {}".format(total_filtered_balance))
 
 
 assert total_balance == (total_restored_balance + total_filtered_balance)
