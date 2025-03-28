@@ -41,11 +41,10 @@ total_restored_balance = 0
 total_filtered_balance = 0
 
 # Importing the EON accounts
-for account in eon_dump_data['accounts']:
-	source_account_data = eon_dump_data['accounts'][account]
-	balance = int(source_account_data['balance'])
+for account, account_data in eon_dump_data['accounts'].items():
+	balance = int(account_data['balance'])
 	total_balance = total_balance + balance
-	if 'code' not in source_account_data:
+	if 'code' not in account_data:
 		if account == NULL_ACCOUNT:
 			total_filtered_balance = total_filtered_balance + balance
 		elif balance != 0:
@@ -61,9 +60,8 @@ with open(eon_stakes_file_name, 'r') as eon_stakes_file:
 	eon_stakes_data = json.load(eon_stakes_file)
 
 total_stakes = 0
-for stake in eon_stakes_data.items():
-	account = stake[0].lower()
-	stake_amount = stake[1]
+for account, stake_amount in eon_stakes_data.items():
+	account = account.lower()
 	total_stakes = total_stakes + stake_amount
 	if account not in smart_contract_list and account != NULL_ACCOUNT:
 		# Forger Stakes native smart contract balance is equal to all the stakes + any possible direct transfer.
@@ -87,7 +85,7 @@ print("Total balance from EON migrated (EOA + EOA Stakes):                      
 print("Total balance from EON not restored (Contracts + Contracts Stakes + NULL address): {}".format(total_filtered_balance))
 
 
-assert total_balance == (total_restored_balance + total_filtered_balance)
+assert total_balance == (total_restored_balance + total_filtered_balance), "Total balance is different from the sum of restored and filtered balances"
 sorted_accounts = collections.OrderedDict(sorted(results.items()))
 
 with open(result_file_name, "w") as jsonFile:
