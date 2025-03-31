@@ -7,11 +7,11 @@ The ERC-20 contract
 
 - ZTESTBackupVault.sol<br>
 Exposes methods to allow a central authority to load the EON balances to reward, and then proceed to distribute them.<br>
-A cumulative hash of all the address+balances is calculated both offchain and onchain, allowing any external user to verify the fairness of the distribution.
+A cumulative hash of all the address+balances is calculated both off chain and onchain, allowing any external user to verify the fairness of the distribution.
 
 - ZTESTZendBackupVault.sol<br>
 Exposes methods to allow a central authority to load the ZEND balances to reward. Then the user can call the claim function for restoring their balance inside an address of their choice.<br>
-A cumulative hash of all the address+balances is calculated both offchain and onchain, allowing any external user to verify the fairness of the distribution.
+A cumulative hash of all the address+balances is calculated both off chain and onchain, allowing any external user to verify the fairness of the distribution.
 
 Usage:
 
@@ -22,7 +22,7 @@ Usage:
 <i>npx hardhat test</i>
 
 3. (Optionally) If you want to run the test suite in real network:
-- create a .env file in the root folder with an entry: MNEMONIC=<seed_phrase> , with the seedphrase of a metamask wallet with funds
+- create a .env file in the root folder with an entry: MNEMONIC=<seed_phrase>, with the seed phrase of a metamask wallet with funds
 - configure in hardhat-config.js the desired network and change the value of defaultNetwork property to use it
 - rerun point 2.
 
@@ -33,7 +33,7 @@ Usage:
     - NETWORK_URL=\<network url\>
     - ADMIN_PRIVK=\<private key\> the private key of the account with the authority for restoring and accounts and minting the corresponding ZEN tokens. 
     - TOKEN_ADDRESS=\<address of ZTEST contract\>
-    - VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
+    - EON_VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
     - EON_FILE=\<EON accounts file name\> It is tha name and path of the file generated using the script setup_eon2_json.py
 - Run <i>npx hardhat restoreEON</i>
 5. For testing the <i>restoreEON</i> task:
@@ -46,5 +46,5 @@ Usage:
  - run <i>npx hardhat contractSetup</i>. This will deploy the needed contracts. 
  - Set the contract addresses in .env file:
     - TOKEN_ADDRESS=\<address of ZTEST contract\>
-    - VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
+    - EON_VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
  - run <i>npx hardhat restoreEON</i>
