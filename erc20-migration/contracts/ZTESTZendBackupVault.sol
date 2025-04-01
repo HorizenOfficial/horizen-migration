@@ -126,15 +126,15 @@ contract ZTESTZendBackupVault is Ownable {
     ///         IMPORTANT: the array should have as length the number of public keys in the script. The signature in the "i" position should be the signature for the "i"
     ///         pub key in the order it appears in the script. If the signature is not present for that key, it could be zero or invalid signature.
     ///         This is to avoid duplicated signatures without expensive checks.
-    ///
+    ///         
     ///         script is the script to claim, from which pubKeys will be extractted
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
-    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script) public canClaim(destAddress) {
+    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes20 zenAddress, bytes memory script) public canClaim(destAddress) {
 
-        uint256 minSignatures = _extractMinSignatureFromScript(script);
+        uint256 minSignatures = uint256(uint8(script[0])) - 80;
         (bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) = _extractPubKeysFromScript(script);
         if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
-        bytes20 zenAddress = _extractZenAddressFromScript(script);
+        _checkZenAddressFromScript(zenAddress, script);
         
         //check amount to claim
         uint256 amount = balances[zenAddress];
@@ -220,13 +220,10 @@ contract ZTESTZendBackupVault is Ownable {
     }
 
     /// @notice extract zen address from multisignature script
-    function _extractZenAddressFromScript(bytes memory /*script*/) internal pure returns(bytes20) {
-        return 0x00000000000000000000; //TODO
+    function _checkZenAddressFromScript(bytes20 zenAddress, bytes memory script) internal pure {
+        //revert AddressNotValid();
     }
 
-    // @notice extract required signature number from script 
-    function _extractMinSignatureFromScript(bytes memory script) internal pure returns(uint256) {
-        return uint256(uint8(script[0])) - 80;
-    }
+
 
 }
