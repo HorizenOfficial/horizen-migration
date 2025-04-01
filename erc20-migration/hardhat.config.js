@@ -41,14 +41,19 @@ task("balances", "Prints the wallet balances", async (taskArgs, hre) => {
   }
 });
 
-function updateCumulativeHash(previousHash, address, value) {
-  //the following hashing algorithm produces the same output as the one used in solidity
+const EON_VAULT_CONTRACT_NAME = "ZTESTBackupVault"
+const ZEND_VAULT_CONTRACT_NAME = "ZTESTZendBackupVault"
+const ZEN_TOKEN_CONTRACT_NAME = "ZTEST"
+
+function updateEONCumulativeHash(previousHash, address, value) {
   const encoded = web3.eth.abi.encodeParameters(['bytes32', 'address', 'uint256'], [previousHash, address, value])
   return web3.utils.sha3(encoded, { encoding: 'hex' })
 }
 
-const EON_VAULT_CONTRACT_NAME = "ZTESTBackupVault"
-const ZEN_TOKEN_CONTRACT_NAME = "ZTEST"
+function updateZENDCumulativeHash(previousHash, address, value) {
+  const encoded = web3.eth.abi.encodeParameters(['bytes32', 'bytes20', 'uint256'], [previousHash, address, value])
+  return web3.utils.sha3(encoded, { encoding: 'hex' })
+}
 
 task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
@@ -57,17 +62,23 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
     exit(-1);
   }
 
+  if (process.env.ZEND_FILE == null) {
+    console.error("ZEND_FILE environment variable not set: missing ZEND accounts file. Exiting.");
+    exit(-1);
+  }
+
+  console.log("Calculating EON cumulative account hash");
   console.log("Using EON accounts file: " + process.env.EON_FILE);
-  const jsonFile = fs.readFileSync(process.env.EON_FILE, 'utf-8');
-  const jsonData = JSONbig.parse(jsonFile);
-  const accounts = Object.entries(jsonData).map(([address, balance]) => [address, balance.toString()]);
+  const eonJsonFile = fs.readFileSync(process.env.EON_FILE, 'utf-8');
+  const eonJsonData = JSONbig.parse(eonJsonFile);
+  const eonAccounts = Object.entries(eonJsonData).map(([address, balance]) => [address, balance.toString()]);
 
   /*********************** To BE removed**************************************** */
   let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  for (const [address, balance] of accounts) {
-    finalCumAccountHash = updateCumulativeHash(finalCumAccountHash, address, balance);
+  for (const [address, balance] of eonAccounts) {
+    finalCumAccountHash = updateEONCumulativeHash(finalCumAccountHash, address, balance);
   }
-  console.log("Final account hash: ", finalCumAccountHash);
+  console.log("Eon final account hash: ", finalCumAccountHash);
 
   console.log("Deploying EONVault contract");
   const admin = (await ethers.getSigners())[0];
@@ -83,7 +94,6 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   console.log(`EONVault contract deployed at: ${EONVault.target}`);
 
   console.log("Deploying ZENToken contract");
-
   factory = await hre.ethers.getContractFactory(ZEN_TOKEN_CONTRACT_NAME);
   ZENToken = await factory.deploy(await EONVault.getAddress());
   console.log(`ZENToken contract deployed at: ${ZENToken.target}`);
@@ -93,13 +103,46 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
     console.error("Deploying ZENToken contract failed!");
     exit(-1);
   }
-  console.log("Set ERC-20 contract reference in the vault contract");
-  res = await EONVault.setERC20(await ZENToken.getAddress());
 
+  console.log("Set ERC-20 contract reference in the EON vault contract");
+  res = await EONVault.setERC20(await ZENToken.getAddress());
   if (res.status == 0) {
-    console.error("Setting ERC-20 contract reference in the vault contract failed!");
+    console.error("Setting ERC-20 contract reference in the EON vault contract failed!");
     exit(-1);
   }
+
+  console.log("Calculating ZEND cumulative account hash");
+  console.log("Using ZEND accounts file: " + process.env.ZEND_FILE);
+  const zendJsonFile = fs.readFileSync(process.env.ZEND_FILE, 'utf-8');
+  const zendJsonData = JSONbig.parse(zendJsonFile);
+  const zendAccounts = Object.entries(zendJsonData).map(([address, balance]) => [address, balance.toString()]);
+
+  /*********************** To BE removed**************************************** */
+  finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  for (const [address, balance] of zendAccounts) {
+    finalCumAccountHash = updateZENDCumulativeHash(finalCumAccountHash, address, balance);
+  }
+  console.log("Zend final account hash: ", finalCumAccountHash);
+
+  console.log("Deploying ZENDVault contract");
+  factory = await hre.ethers.getContractFactory(ZEND_VAULT_CONTRACT_NAME);
+  let ZENDVault = await factory.deploy(admin, finalCumAccountHash);
+  res = await ZENDVault.deploymentTransaction().wait(); // Wait for confirmation
+
+  if (res.status == 0) {
+    console.error("Deploying ZENDVault contract failed!");
+    exit(-1);
+  }
+  console.log(`ZENDVault contract deployed at: ${ZENDVault.target}`);
+
+  console.log("Set ERC-20 contract reference in the ZEND vault contract");
+  res = await ZENDVault.setERC20(await ZENToken.getAddress());
+
+  if (res.status == 0) {
+    console.error("Setting ERC-20 contract reference in the ZENDVault vault contract failed!");
+    exit(-1);
+  }
+
 });
 
 task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
@@ -114,8 +157,8 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
     console.error("EON_VAULT_ADDRESS environment variable not set: missing EONVault contract address. Exiting.")
     exit(-1);
   }
-
   console.log("EON_VAULT_ADDRESS: " + process.env.EON_VAULT_ADDRESS);
+
   if (process.env.TOKEN_ADDRESS == null) {
     console.error("TOKEN_ADDRESS environment variable not set: missing ZEN ERC20 token contract address. Exiting.")
     exit(-1);
@@ -130,10 +173,9 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
 
   let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
   for (const [address, balance] of accounts) {
-    finalCumAccountHash = updateCumulativeHash(finalCumAccountHash, address, balance);
+    finalCumAccountHash = updateEONCumulativeHash(finalCumAccountHash, address, balance);
   }
   console.log("Final account hash: ", finalCumAccountHash);
-
 
   const EONVault = await hre.ethers.getContractAt(EON_VAULT_CONTRACT_NAME, process.env.EON_VAULT_ADDRESS);
   /*************************************************************** */
@@ -152,7 +194,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
 
   for (const [address, balance] of accounts) {
     addressesValues.push({ addr: address, value: balance });
-    calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, address, balance);
+    calcCumulativeHash = updateEONCumulativeHash(calcCumulativeHash, address, balance);
     if (addressesValues.length == BATCH_LENGTH) {
       console.log("Inserting batch: " + batchNumber);
       try {
@@ -239,22 +281,164 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   console.log("\n\n***************************************************************");
   console.log("                 Checking distributed tokens");
   console.log("***************************************************************\n");
-  let num_of_mismatches = 0;
+  let mismatch_messages = [];
+  let count = 1;
   for (const [address, balance] of accounts) {
+    const progressPercentage = Math.floor(count / accounts.length * 100);
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(`Progress: ${progressPercentage}%`);
     let currentBalance = await ZENToken.balanceOf(address);
     if (currentBalance != balance) {
-      console.log("Balance of address " + address + " different from expected - expected: " + balance + ", actual: " + currentBalance);
-      num_of_mismatches++;
+      mismatch_messages.push("Balance of address " + address + " different from expected - expected: " + balance + ", actual: " + currentBalance);
     }
+    count++;
   }
 
   console.log("\n***************************************************************");
-  console.log("             Checking end. Mismatches found: " + num_of_mismatches);
+  console.log("             Checking end. Mismatches found: " + mismatch_messages.length);
+  if (mismatch_messages.length > 0) {
+    for (msg of mismatch_messages)
+      console.log(msg);
+  }
   console.log("***************************************************************");
 
 
 });
 
+task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
+
+  if (process.env.ZEND_FILE == null) {
+    console.error("ZEND_FILE environment variable not set: missing ZEND accounts file. Exiting.");
+    exit(-1);
+  }
+  console.log("Using ZEND accounts file: " + process.env.ZEND_FILE);
+
+  if (process.env.ZEND_VAULT_ADDRESS == null) {
+    console.error("ZEND_VAULT_ADDRESS environment variable not set: missing ZENDVault contract address. Exiting.")
+    exit(-1);
+  }
+
+  console.log("ZEND_VAULT_ADDRESS: " + process.env.ZEND_VAULT_ADDRESS);
+
+  console.log("Calculating cumulative account hash");
+
+  const jsonFile = fs.readFileSync(process.env.ZEND_FILE, 'utf-8');
+  const jsonData = JSONbig.parse(jsonFile);
+  const accounts = Object.entries(jsonData).map(([address, balance]) => [address, balance.toString()]);
+
+  let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  for (const [address, balance] of accounts) {
+    finalCumAccountHash = updateZENDCumulativeHash(finalCumAccountHash, address, balance);
+  }
+  console.log("Final account hash: ", finalCumAccountHash);
+
+
+  const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
+  /*************************************************************** */
+  // Set of cumulative hash on vault. TBD
+  /*************************************************************** */
+
+  console.log("\n\n***************************************************************");
+  console.log("                      Start loading accounts");
+  console.log("***************************************************************\n\n");
+
+  const BATCH_LENGTH = 500;
+  let addressesValues = [];
+  let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  let batchNumber = 0;
+  let totalUsedGas = BigInt(0);
+
+  for (const [address, balance] of accounts) {
+    addressesValues.push({ addr: address, value: balance });
+    calcCumulativeHash = updateZENDCumulativeHash(calcCumulativeHash, address, balance);
+    if (addressesValues.length == BATCH_LENGTH) {
+      console.log("Inserting batch: " + batchNumber);
+      try {
+        let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
+        let receipt = await res.wait();
+        totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
+        console.log("Gas used: " + receipt.gasUsed);
+        console.log("Cumulative gas used: " + totalUsedGas);
+        if (receipt.status == 0) {
+          console.error("Inserting batch: " + batchNumber + " failed! Failed transaction: " + res);
+          exit(-1);
+        }
+        else {
+          console.log("Inserted batch " + batchNumber);
+        }
+      }
+      catch (error) {
+        console.log("Error inserting batch " + batchNumber);
+        console.log(error);
+        exit(-1);
+      }
+      batchNumber++;
+      addressesValues = [];
+    }
+  }
+  if (addressesValues.length > 0) {
+    console.log("Inserting last batch, number: " + batchNumber);
+    try {
+      let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
+      let receipt = await res.wait();
+      totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
+      console.log("Gas used: " + receipt.gasUsed);
+      console.log("Cumulative gas used: " + totalUsedGas);
+      if (receipt.status == 0) {
+        console.error("Inserting batch: " + batchNumber + " failed! Failed transaction: " + res);
+        exit(-1);
+      }
+      else {
+        console.log("Inserted last batch: " + batchNumber);
+      }
+    }
+    catch (error) {
+      console.log("Error inserting batch: " + batchNumber);
+      console.log(error);
+      exit(-1);
+    }
+  }
+
+  console.log("Checking final hash");
+  let finalHash = await ZENDVault._cumulativeHash();
+  if (finalHash != finalCumAccountHash) {
+    console.log("Wrong final account hash. Expected: " + finalCumAccountHash + ", actual: " + finalHash);
+    exit(-1);
+  }
+  console.log("Correct final hash reached");
+
+  console.log("End loading accounts");
+
+  //check restored balances
+
+  console.log("\n\n***************************************************************");
+  console.log("                 Checking restored balances");
+  console.log("***************************************************************\n");
+  let mismatch_messages = [];
+  let count = 1;
+  for (const [address, balance] of accounts) {
+    const progressPercentage = Math.floor(count / accounts.length * 100);
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(`Progress: ${progressPercentage}%`);
+    let currentBalance = await ZENDVault.balances(address);
+    if (currentBalance != balance) {
+      mismatch_messages.push("Balance of address " + address + " different from expected - expected: " + balance + ", actual: " + currentBalance);
+    }
+    count++;
+  }
+
+  console.log("\n***************************************************************");
+  console.log("             Checking end. Mismatches found: " + mismatch_messages.length);
+  if (mismatch_messages.length > 0) {
+    for (msg of mismatch_messages)
+      console.log(msg);
+  }
+  console.log("***************************************************************");
+
+
+});
 
 
 
