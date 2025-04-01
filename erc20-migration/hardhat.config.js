@@ -4,7 +4,6 @@ require("dotenv").config();
 const { exit } = require("process");
 const web3 = require("web3");
 const fs = require("fs");
-const path = require("path");
 const JSONbig = require("json-bigint")({ storeAsString: true });
 
 
@@ -57,34 +56,16 @@ function updateZENDCumulativeHash(previousHash, address, value) {
 
 task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
-  if (process.env.EON_FILE == null) {
-    console.error("EON_FILE environment variable not set: missing EON accounts file. Exiting.");
-    exit(-1);
-  }
-
   if (process.env.ZEND_FILE == null) {
     console.error("ZEND_FILE environment variable not set: missing ZEND accounts file. Exiting.");
     exit(-1);
   }
-
-  console.log("Calculating EON cumulative account hash");
-  console.log("Using EON accounts file: " + process.env.EON_FILE);
-  const eonJsonFile = fs.readFileSync(process.env.EON_FILE, 'utf-8');
-  const eonJsonData = JSONbig.parse(eonJsonFile);
-  const eonAccounts = Object.entries(eonJsonData).map(([address, balance]) => [address, balance.toString()]);
-
-  /*********************** To BE removed**************************************** */
-  let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  for (const [address, balance] of eonAccounts) {
-    finalCumAccountHash = updateEONCumulativeHash(finalCumAccountHash, address, balance);
-  }
-  console.log("Eon final account hash: ", finalCumAccountHash);
-
+  
   console.log("Deploying EONVault contract");
   const admin = (await ethers.getSigners())[0];
 
   let factory = await hre.ethers.getContractFactory(EON_VAULT_CONTRACT_NAME);
-  let EONVault = await factory.deploy(admin, finalCumAccountHash);
+  let EONVault = await factory.deploy(admin);
   let res = await EONVault.deploymentTransaction().wait(); // Wait for confirmation
 
   if (res.status == 0) {
@@ -178,9 +159,17 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   console.log("Final account hash: ", finalCumAccountHash);
 
   const EONVault = await hre.ethers.getContractAt(EON_VAULT_CONTRACT_NAME, process.env.EON_VAULT_ADDRESS);
-  /*************************************************************** */
-  // Set of cumulative hash on vault. TBD
-  /*************************************************************** */
+
+  console.log("Setting final account hash on EONVault");
+  let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash);   
+  let receipt = await res.wait();
+  if (receipt.status == 0) {
+    console.error("Setting final account hash on EONVault failed! Failed transaction: " + res);
+    exit(-1);
+  }
+
+  console.log("Setting final account hash on EONVault OK");
+
 
   console.log("\n\n***************************************************************");
   console.log("                      Start loading accounts");
