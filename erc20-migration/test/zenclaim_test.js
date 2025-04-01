@@ -108,7 +108,8 @@ describe("ZEND Claim test", function () {
 
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory("ZTEST");
-    erc20 = await factory.deploy(await ZTESTZendBackupVault.getAddress());
+    const MOCK_EON_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
+    erc20 = await factory.deploy(MOCK_EON_VAULT_ADDRESS, await ZTESTZendBackupVault.getAddress());
   });
 
   it("Set ERC-20 contract reference in the backup contract", async function () {
