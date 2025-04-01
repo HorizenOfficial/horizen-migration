@@ -11,6 +11,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 ///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
 contract ZTESTZendBackupVault is Ownable {
+    uint256 constant HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH = 65;
+    uint256 constant HORIZEN_COMPRESSED_PUBLIC_KEY_LENGTH = 33;
 
     struct AddressValue {
         bytes20 addr;
@@ -39,6 +41,7 @@ contract ZTESTZendBackupVault is Ownable {
     error NothingToClaim(bytes20 zenAddress);
     error InsufficientSignatures(uint256 number, uint256 required);
     error InvalidSignatureArrayLength();
+    error InvalidPublicKeySize(uint256 size);
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
 
     /// @notice verify if we are in the state in which users can already claim
@@ -128,9 +131,9 @@ contract ZTESTZendBackupVault is Ownable {
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
     function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script) public canClaim(destAddress) {
 
+        uint256 minSignatures = _extractMinSignatureFromScript(script);
         (bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) = _extractPubKeysFromScript(script);
         if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
-        uint256 minSignatures = _extractMinSignaturesFromScript(script);
         bytes20 zenAddress = _extractZenAddressFromScript(script);
         
         //check amount to claim
@@ -162,8 +165,58 @@ contract ZTESTZendBackupVault is Ownable {
     }
 
     /// @notice extract public keys from multisignature script. Two separate arrays are returned since it should be a 64-bit
-    function _extractPubKeysFromScript(bytes memory /*script*/) internal pure returns(bytes32[] memory, bytes32[] memory) {
-        return (new bytes32[](0), new bytes32[](0)); //TODO
+    function _extractPubKeysFromScript(bytes memory script) internal pure returns(bytes32[] memory, bytes32[] memory) {
+        uint256 total = uint256(uint8(script[script.length - 2])) - 80;
+        uint256 pos = 1;
+        bytes32[] memory pubKeysX = new bytes32[](total);
+        bytes32[] memory pubKeysY = new bytes32[](total);
+
+        uint256 i;
+        while(i < total) {
+            uint256 nextPubKeySize = uint256(uint8(script[pos]));
+            ++pos;
+            if(nextPubKeySize != HORIZEN_COMPRESSED_PUBLIC_KEY_LENGTH && nextPubKeySize != HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) revert InvalidPublicKeySize(nextPubKeySize);
+
+            //extract key
+            //first 32 btyes
+            bytes32 firstPart;
+            assembly {
+                let resultPtr := mload(0x40)
+                let sourcePtr := add(script, 0x20)
+                let offset := add(sourcePtr, pos)
+
+                mstore(resultPtr, mload(offset))
+                firstPart := mload(resultPtr)
+            }
+            pubKeysX[i] = firstPart;
+
+            //second part
+            bytes memory secondPart = new bytes(nextPubKeySize);
+            uint256 secondPartStart = pos + 32;
+            uint256 secondPartLength = nextPubKeySize - 32;
+            assembly {
+                let resultPtr := add(secondPart, 0x20)
+                let sourcePtr := add(script, 0x20)
+                let offset := add(sourcePtr, secondPartStart)
+                let end := add(offset, secondPartLength)
+
+                for { let j := offset } lt(j, end) { j := add(j, 1) } {
+                    mstore(resultPtr, byte(0, mload(j))) 
+                    resultPtr := add(resultPtr, 1)
+                }
+            }
+
+            if (secondPart.length == 1) {
+                pubKeysY[i] = bytes32(secondPart[0]);
+            } else {
+                pubKeysY[i] = bytes32(secondPart);
+            }
+
+            pos += nextPubKeySize;
+            unchecked { ++i; }
+        }
+
+        return (pubKeysX, pubKeysY);
     }
 
     /// @notice extract zen address from multisignature script
@@ -171,9 +224,9 @@ contract ZTESTZendBackupVault is Ownable {
         return 0x00000000000000000000; //TODO
     }
 
-    /// @notice extract min number of required signatures from multisignature script
-    function _extractMinSignaturesFromScript(bytes memory /*script*/) internal pure returns(uint256) {
-        return 0; //TODO
+    // @notice extract required signature number from script 
+    function _extractMinSignatureFromScript(bytes memory script) internal pure returns(uint256) {
+        return uint256(uint8(script[0])) - 80;
     }
 
 }
