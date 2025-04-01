@@ -56,11 +56,6 @@ function updateZENDCumulativeHash(previousHash, address, value) {
 
 task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
-  if (process.env.ZEND_FILE == null) {
-    console.error("ZEND_FILE environment variable not set: missing ZEND accounts file. Exiting.");
-    exit(-1);
-  }
-  
   console.log("Deploying EONVault contract");
   const admin = (await ethers.getSigners())[0];
 
@@ -92,22 +87,9 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
     exit(-1);
   }
 
-  console.log("Calculating ZEND cumulative account hash");
-  console.log("Using ZEND accounts file: " + process.env.ZEND_FILE);
-  const zendJsonFile = fs.readFileSync(process.env.ZEND_FILE, 'utf-8');
-  const zendJsonData = JSONbig.parse(zendJsonFile);
-  const zendAccounts = Object.entries(zendJsonData).map(([address, balance]) => [address, balance.toString()]);
-
-  /*********************** To BE removed**************************************** */
-  finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  for (const [address, balance] of zendAccounts) {
-    finalCumAccountHash = updateZENDCumulativeHash(finalCumAccountHash, address, balance);
-  }
-  console.log("Zend final account hash: ", finalCumAccountHash);
-
   console.log("Deploying ZENDVault contract");
   factory = await hre.ethers.getContractFactory(ZEND_VAULT_CONTRACT_NAME);
-  let ZENDVault = await factory.deploy(admin, finalCumAccountHash);
+  let ZENDVault = await factory.deploy(admin);
   res = await ZENDVault.deploymentTransaction().wait(); // Wait for confirmation
 
   if (res.status == 0) {
@@ -324,9 +306,16 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
 
 
   const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
-  /*************************************************************** */
-  // Set of cumulative hash on vault. TBD
-  /*************************************************************** */
+
+  console.log("Setting final account hash on ZENDVault");
+  let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash);   
+  let receipt = await res.wait();
+  if (receipt.status == 0) {
+    console.error("Setting final account hash on ZENDVault failed! Failed transaction: " + res);
+    exit(-1);
+  }
+
+  console.log("Setting final account hash on ZENDVault OK");
 
   console.log("\n\n***************************************************************");
   console.log("                      Start loading accounts");
