@@ -44,7 +44,7 @@ with open(zend_dump_file_name, 'r') as zend_dump_file:
 	for (zend_address, balance_in_satoshi, _) in zend_dump_data_reader:
 		decoded_address = base58.b58decode_check(zend_address).hex()
 		# Remove prefix
-		decoded_address = decoded_address[4:]
+		decoded_address = "0x" + decoded_address[4:]
 		balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
 		total_balance = total_balance + balance_in_wei
 		if decoded_address in results:

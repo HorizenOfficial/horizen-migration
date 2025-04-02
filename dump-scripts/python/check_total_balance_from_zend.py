@@ -1,5 +1,6 @@
 import sys
 import csv
+import os
 
 """
 This python script will require the following input parameters
@@ -36,7 +37,6 @@ DIFFERENCE_THRESHOLD = 5000000 # difference threshold in satoshis
 def calculate_total_supply_from_height(height):
     HALVING_INTERVAL = 840000
     HZN_EARLY_HISTORY_CORRECTION = 238569501304
-    ZEN_TO_SATOSHI_MULTIPLIER = 100000000
 
     if height == 0:
         return 0
@@ -81,6 +81,13 @@ def retrieve_balance_from_zend_dump(dump_file_path):
             balance_from_dump += int(row[1])
     return balance_from_dump
 
+
+if len(sys.argv) != 4:
+	print(
+		"Usage: python3 {} <mainchain block height> <Zend dump file name> <EON sidechain balance>"
+		.format(os.path.basename(__file__)))
+	sys.exit(1)
+
 height = int(sys.argv[1])
 calculated_total_supply = calculate_total_supply_from_height(height)
 print(f"Calculated mainchain balance at block {height} is {calculated_total_supply} satoshis")
@@ -95,5 +102,5 @@ difference = abs(total_supply_without_sidechains_and_shielded_pool - balance_fro
 if difference >= DIFFERENCE_THRESHOLD:
     print(f"Difference between calculated total supply and balance from zend dump is {difference} satoshis, higher than the defined threshold {DIFFERENCE_THRESHOLD}")
     sys.exit(1)
-else 
+else:
     print(f"Difference between calculated total supply and balance from zend dump is {difference} satoshis, below the defined threshold {DIFFERENCE_THRESHOLD}")

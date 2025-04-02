@@ -221,7 +221,7 @@ total_stakes = 0
 for key, value in stakes.items():
 	total_stakes = total_stakes + value
 
-assert total_stakes == total[0]
+assert total_stakes == total[0], "stakeTotal returns a value different from the sum of all the stakes "
 
 with open(result_file_name, "w") as jsonFile:
 	json.dump(stakes, jsonFile, indent=4)
