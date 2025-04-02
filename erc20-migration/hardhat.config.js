@@ -70,8 +70,10 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   console.log(`EONVault contract deployed at: ${EONVault.target}`);
 
   console.log("Deploying ZENToken contract");
+  const MOCK_ZEND_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
+
   factory = await hre.ethers.getContractFactory(ZEN_TOKEN_CONTRACT_NAME);
-  ZENToken = await factory.deploy(await EONVault.getAddress());
+  ZENToken = await factory.deploy(MOCK_ZEND_VAULT_ADDRESS, await EONVault.getAddress());
   console.log(`ZENToken contract deployed at: ${ZENToken.target}`);
   res = await ZENToken.deploymentTransaction().wait(); // Wait for confirmation
 
