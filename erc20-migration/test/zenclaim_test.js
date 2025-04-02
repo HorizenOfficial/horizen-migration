@@ -77,7 +77,11 @@ describe("ZEND Claim test", function () {
   it("Deployment of the backup contract", async function () {
     admin = (await ethers.getSigners())[0];
     var factory = await ethers.getContractFactory("ZTESTZendBackupVault");    
-    ZTESTZendBackupVault = await factory.deploy(admin, dumpRecursiveHash);
+    ZTESTZendBackupVault = await factory.deploy(admin);
+  });
+
+  it("Set cumulative hash checkpoint in the backup contract", async function () {
+    await ZTESTZendBackupVault.setCumulativeHashCeckpoint(dumpRecursiveHash);    
   });
 
   it("Store backup balances in the contract", async function () {

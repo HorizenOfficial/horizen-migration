@@ -38,10 +38,15 @@ describe("Token and EON Backup contract testing", function () {
   it("Deployment of the backup contract", async function () {
     admin = (await ethers.getSigners())[0];
     var factory = await ethers.getContractFactory("ZTESTBackupVault");    
-    ZTESTBackupVault = await factory.deploy(admin, dumpRecursiveHash);
+    ZTESTBackupVault = await factory.deploy(admin);
     console.log(`Contract deployed at: ${ZTESTBackupVault.target}`);
     const receipt = await ZTESTBackupVault.deploymentTransaction().wait(); // Wait for confirmation
     printReceipt("Deploy of backup contract",receipt);
+  });
+
+  it("Set cumulative hash checkpoint in the backup contract", async function () {
+    var res = await ZTESTBackupVault.setCumulativeHashCeckpoint(dumpRecursiveHash);    
+    printReceipt("Set  cumulative hash checkpoin in vault", await res.wait());
   });
 
   it("Store backup balances in the contract (in batches of "+BATCH_LENGTH+")", async function () {
