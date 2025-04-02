@@ -221,7 +221,25 @@ contract ZTESTZendBackupVault is Ownable {
 
     /// @notice extract zen address from multisignature script
     function _checkZenAddressFromScript(bytes20 zenAddress, bytes memory script) internal pure {
-        //revert AddressNotValid();
+        bytes32 scriptHash = sha256(script);
+        scriptHash = ripemd160(abi.encode(scriptHash));
+        //prefix is first two bytes
+        bytes memory prefix = new bytes(2);
+        prefix[0] = zenAddress[0];
+        prefix[1] = zenAddress[1];
+        bytes memory withPrefix = abi.encode(prefix, scriptHash);
+        //checksum (double hash)
+        bytes32 checksum_sha = sha256(withPrefix);
+        checksum_sha = sha256(abi.encode(checksum_sha));
+        //checksum is first 4 bytes
+        bytes memory checksum = new bytes(4);
+        checksum[0] = checksum_sha[0];
+        checksum[1] = checksum_sha[1];
+        checksum[2] = checksum_sha[2];
+        checksum[3] = checksum_sha[3];
+
+        bytes memory concatenated = abi.encode(withPrefix, checksum);
+        if(bytes20(concatenated) != zenAddress) revert AddressNotValid();
     }
 
 
