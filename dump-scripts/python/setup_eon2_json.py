@@ -40,6 +40,26 @@ total_balance = 0
 total_restored_balance = 0
 total_filtered_balance = 0
 
+class Top20:
+    def __init__(self):
+        self.items = []  
+
+    def add_item(self, new_item):
+        self.items.append(new_item)
+
+    
+    def print_items(self):
+        self.items.sort(key=lambda x: x['amount'], reverse=True)
+        i = 0
+        for item in self.items:
+            if (i<20):
+            	print(f"{item['id']}, {item['amount']}")
+            i = i + 1
+
+
+top_20_not_migrated_contracts = Top20()
+total_contracts = 0
+
 # Importing the EON accounts
 for account, account_data in eon_dump_data['accounts'].items():
 	balance = int(account_data['balance'])
@@ -51,8 +71,10 @@ for account, account_data in eon_dump_data['accounts'].items():
 			results[account.lower()] = balance
 			total_restored_balance = total_restored_balance + balance
 	else:
-		smart_contract_list.append(account.lower())
+		smart_contract_list.append(account.lower())		
 		total_filtered_balance = total_filtered_balance + balance
+		top_20_not_migrated_contracts.add_item({'id': account.lower(), 'amount': balance})
+		total_contracts = total_contracts + 1
 
 
 # Importing the EON stakes
@@ -78,11 +100,16 @@ for account, stake_amount in eon_stakes_data.items():
 			results[account] = stake_amount
 	else:
 		print("Delegator {} is a smart contract".format(account))
+		print(" its balance is {}".format(stake_amount))
 
 print("Total balance from EON (EOA + Contracts + Stakes):                                 {}".format(total_balance))
 print("Total stakes:                                                                      {}".format(total_stakes))
 print("Total balance from EON migrated (EOA + EOA Stakes):                                {}".format(total_restored_balance))
 print("Total balance from EON not restored (Contracts + Contracts Stakes + NULL address): {}".format(total_filtered_balance))
+print("Top 20 NOT migrated contracts by ZEN balance:")
+top_20_not_migrated_contracts.print_items()
+print("Total NOT migrated contracts: {}".format(total_contracts))
+
 
 
 assert total_balance == (total_restored_balance + total_filtered_balance), "Total balance is different from the sum of restored and filtered balances"
