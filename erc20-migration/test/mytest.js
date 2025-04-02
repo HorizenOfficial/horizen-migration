@@ -79,7 +79,8 @@ describe("Token and EON Backup contract testing", function () {
 
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory("ZTEST");
-    erc20 = await factory.deploy(await ZTESTBackupVault.getAddress());
+    const MOCK_ZEND_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
+    erc20 = await factory.deploy(await ZTESTBackupVault.getAddress(), MOCK_ZEND_VAULT_ADDRESS);
     const receipt = await erc20.deploymentTransaction().wait(); // Wait for confirmation
     printReceipt("Deploy of ERC-20 contract",receipt);
   });
