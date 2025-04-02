@@ -1,7 +1,7 @@
 import json
 import sys
 import csv
-
+import os
 import base58
 
 """
@@ -66,6 +66,12 @@ def validate_zend_data(zend_dump_file_name, horizen2_zend_file_name):
             set_failed_execution()
             print(f"Zend address {horizen2_zend_address} present in Horizen 2 from Zend file {horizen2_zend_file_name} not found in Zend dump file {zend_dump_file_name}.")
         
+if len(sys.argv) != 3:
+    print(
+        "Usage: python3 {} <Zend dump file name> <Horizen2 file> "
+        .format(os.path.basename(__file__)))
+    sys.exit(1)
+
 
 # Input files
 zend_dump_file_name = sys.argv[1]
