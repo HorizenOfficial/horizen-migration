@@ -133,6 +133,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   const jsonFile = fs.readFileSync(process.env.EON_FILE, 'utf-8');
   const jsonData = JSONbig.parse(jsonFile);
   const accounts = Object.entries(jsonData).map(([address, balance]) => [address, balance.toString()]);
+  accounts.sort((a, b) => a[0].localeCompare(b[0]));
 
   let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
   for (const [address, balance] of accounts) {
@@ -297,6 +298,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   const jsonFile = fs.readFileSync(process.env.ZEND_FILE, 'utf-8');
   const jsonData = JSONbig.parse(jsonFile);
   const accounts = Object.entries(jsonData).map(([address, balance]) => [address, balance.toString()]);
+  accounts.sort((a, b) => a[0].localeCompare(b[0]));
 
   let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
   for (const [address, balance] of accounts) {

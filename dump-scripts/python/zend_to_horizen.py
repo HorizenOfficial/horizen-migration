@@ -60,4 +60,4 @@ print("Total balance migrated from Zend: {}".format(total_balance))
 sorted_accounts = collections.OrderedDict(sorted(results.items()))
 
 with open(result_file_name, "w") as jsonFile:
-	json.dump(results, jsonFile, indent=4)
+	json.dump(sorted_accounts, jsonFile, indent=4)
