@@ -43,6 +43,7 @@ contract ZTESTZendBackupVault is Ownable {
     error InsufficientSignatures(uint256 number, uint256 required);
     error InvalidSignatureArrayLength();
     error InvalidPublicKeySize(uint256 size);
+    error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
 
     /// @notice verify if we are in the state in which users can already claim
@@ -140,11 +141,13 @@ contract ZTESTZendBackupVault is Ownable {
     ///         This is to avoid duplicated signatures without expensive checks.
     ///         
     ///         script is the script to claim, from which pubKeys will be extractted
+    ///         pubKeysX and pubKeysY are the first 32 bytes and second 32 bytes of the signing keys for each one in the script (we use always the uncompressed format here)
+    ///         If the signature is not present for that key, the pub keys x and y should be zero
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
-    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script) public canClaim(destAddress) {
+    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) public canClaim(destAddress) {
 
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
-        (bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) = _extractPubKeysFromScript(script);
+        _verifyPubKeysFromScript(script, pubKeysX, pubKeysY);
         if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
         bytes20 zenAddress = _extractZenAddressFromScript(script);
 
@@ -172,12 +175,10 @@ contract ZTESTZendBackupVault is Ownable {
         _claim(destAddress, zenAddress);
     }
 
-    /// @notice extract public keys from multisignature script. Two separate arrays are returned since it should be a 64-bit
-    function _extractPubKeysFromScript(bytes memory script) internal pure returns(bytes32[] memory, bytes32[] memory) {
+    /// @notice verify public keys from multisignature script
+    function _verifyPubKeysFromScript(bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) internal pure {
         uint256 total = uint256(uint8(script[script.length - 2])) - 80;
         uint256 pos = 1;
-        bytes32[] memory pubKeysX = new bytes32[](total);
-        bytes32[] memory pubKeysY = new bytes32[](total);
 
         uint256 i;
         while(i < total) {
@@ -197,11 +198,10 @@ contract ZTESTZendBackupVault is Ownable {
                 mstore(resultPtr, mload(offset))
                 firstPart := mload(resultPtr)
             }
-            pubKeysX[i] = firstPart;
+            if(pubKeysX[i] != bytes32(0) && pubKeysX[i] != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeysX[i]);
 
             //second part
-            //uncompressed case
-            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) { 
+            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) { //uncompressed case
                 bytes32 secondPart;
                 uint256 secondPartStart = pos + 33;
                 assembly {
@@ -212,14 +212,13 @@ contract ZTESTZendBackupVault is Ownable {
                     mstore(resultPtr, mload(offset))
                     secondPart := mload(resultPtr)
                 }
-                pubKeysY[i] = secondPart;
+                if(pubKeysY[i] != bytes32(0) && pubKeysY[i] != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeysY[i]);
             }
+            //in compressed case, we just check first part
 
             pos += nextPubKeySize;
             unchecked { ++i; }
         }
-
-        return (pubKeysX, pubKeysY);
     }
 
     /// @notice extract zen address from multisignature script
@@ -228,7 +227,4 @@ contract ZTESTZendBackupVault is Ownable {
         scriptHash = ripemd160(abi.encode(scriptHash));
         return bytes20(scriptHash); 
     }
-
-
-
 }
