@@ -141,13 +141,12 @@ contract ZTESTZendBackupVault is Ownable {
     ///         
     ///         script is the script to claim, from which pubKeys will be extractted
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
-    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes20 zenAddress, bytes memory script) public canClaim(destAddress) {
+    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script) public canClaim(destAddress) {
 
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
         (bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) = _extractPubKeysFromScript(script);
         if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
-        _checkZenAddressFromScript(zenAddress, script);
-
+        bytes20 zenAddress = _extractZenAddressFromScript(script);
 
         //signed message suppose address in EIP-55 format for lowercase and uppercase chars
         string memory asString = Strings.toChecksumHexString(destAddress);
@@ -224,10 +223,10 @@ contract ZTESTZendBackupVault is Ownable {
     }
 
     /// @notice extract zen address from multisignature script
-    function _checkZenAddressFromScript(bytes20 zenAddress, bytes memory script) internal pure {
+    function _extractZenAddressFromScript(bytes memory script) internal pure returns(bytes20) {
         bytes32 scriptHash = sha256(script);
         scriptHash = ripemd160(abi.encode(scriptHash));
-        if(bytes20(scriptHash) != zenAddress) revert AddressNotValid();
+        return bytes20(scriptHash); 
     }
 
 
