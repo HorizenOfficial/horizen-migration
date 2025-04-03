@@ -7,6 +7,7 @@ library VerificationLibrary {
 
     error InvalidSignature();  //signature not correctly generated
     error SignatureNotMatching();  //signature was correctly generated but public key not matching 
+    error SignatureMustBe65Bytes();
 
     bytes private constant MESSAGE_MAGIC_BYTES = bytes("Zcash Signed Message:\n");
 
@@ -19,7 +20,7 @@ library VerificationLibrary {
     /// @notice Parse a ZEND signature from its byte representation.
     ///         First byte represents the v field, then 32 bytes for r field and 32 bytes for s field
     function parseZendSignature(bytes memory hexSignature) internal pure returns (Signature memory){
-        require(hexSignature.length == 65, "Signature must be 65 bytes long");
+        if(hexSignature.length != 65) revert SignatureMustBe65Bytes();
         bytes32 r;
         bytes32 s;
         uint8 v = uint8(hexSignature[0]);

@@ -93,6 +93,17 @@ contract ZTESTZendBackupVault is Ownable {
         zenToken = IERC20Mintable(addr);
     }
 
+    /// @notice Internal claim function, to reuse the code between P2PKH and P2PSH
+    function _claim(address destAddress, bytes20 zenAddress) internal {
+        //check amount to claim
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
+        
+        balances[zenAddress] = 0;
+        zenToken.mint(destAddress, amount);
+        emit Claimed(destAddress, zenAddress, amount);
+    }
+
     /// @notice Claim a P2PKH balance.
     ///         destAddress is the receiver of the funds
     ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
@@ -111,19 +122,13 @@ contract ZTESTZendBackupVault is Ownable {
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
 
-        //check amount to claim
-        uint256 amount = balances[zenAddress];
-        if (amount == 0) revert NothingToClaim(zenAddress);
-
         //signed message suppose address in EIP-55 format for lowercase and uppercase chars
         string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
         VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
 
-        balances[zenAddress] = 0;
-        zenToken.mint(destAddress, amount);
-        emit Claimed(destAddress, zenAddress, amount);   
+        _claim(destAddress, zenAddress);
     }
     
     /// @notice Claim a P2SH balance.
@@ -142,10 +147,7 @@ contract ZTESTZendBackupVault is Ownable {
         (bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) = _extractPubKeysFromScript(script);
         if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
         _checkZenAddressFromScript(zenAddress, script);
-        
-        //check amount to claim
-        uint256 amount = balances[zenAddress];
-        if (amount == 0) revert NothingToClaim(zenAddress);
+
 
         //signed message suppose address in EIP-55 format for lowercase and uppercase chars
         string memory asString = Strings.toChecksumHexString(destAddress);
@@ -156,19 +158,19 @@ contract ZTESTZendBackupVault is Ownable {
         uint256 validSignatures;
         uint256 i;
         while(i != hexSignatures.length) {
-            VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
-            //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
-            if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeysX[i], pubKeysY[i])) {
-                ++validSignatures;
+            if(hexSignatures[i].length == 65) {
+                VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
+                //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
+                if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeysX[i], pubKeysY[i])) {
+                    ++validSignatures;
+                }
             }
             unchecked { ++i; }
         }
 
         if(validSignatures < minSignatures) revert InsufficientSignatures(validSignatures, minSignatures); //insufficient signatures
 
-        balances[zenAddress] = 0;
-        zenToken.mint(destAddress, amount);
-        emit Claimed(destAddress, zenAddress, amount);   
+        _claim(destAddress, zenAddress);
     }
 
     /// @notice extract public keys from multisignature script. Two separate arrays are returned since it should be a 64-bit
@@ -187,10 +189,11 @@ contract ZTESTZendBackupVault is Ownable {
             //extract key
             //first 32 btyes
             bytes32 firstPart;
+            uint256 firstPartStart = pos+1;
             assembly {
                 let resultPtr := mload(0x40)
                 let sourcePtr := add(script, 0x20)
-                let offset := add(sourcePtr, pos)
+                let offset := add(sourcePtr, firstPartStart)
 
                 mstore(resultPtr, mload(offset))
                 firstPart := mload(resultPtr)
@@ -198,25 +201,19 @@ contract ZTESTZendBackupVault is Ownable {
             pubKeysX[i] = firstPart;
 
             //second part
-            bytes memory secondPart = new bytes(nextPubKeySize);
-            uint256 secondPartStart = pos + 32;
-            uint256 secondPartLength = nextPubKeySize - 32;
-            assembly {
-                let resultPtr := add(secondPart, 0x20)
-                let sourcePtr := add(script, 0x20)
-                let offset := add(sourcePtr, secondPartStart)
-                let end := add(offset, secondPartLength)
+            //uncompressed case
+            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) { 
+                bytes32 secondPart;
+                uint256 secondPartStart = pos + 33;
+                assembly {
+                    let resultPtr := mload(0x40)
+                    let sourcePtr := add(script, 0x20)
+                    let offset := add(sourcePtr, secondPartStart)
 
-                for { let j := offset } lt(j, end) { j := add(j, 1) } {
-                    mstore(resultPtr, byte(0, mload(j))) 
-                    resultPtr := add(resultPtr, 1)
+                    mstore(resultPtr, mload(offset))
+                    secondPart := mload(resultPtr)
                 }
-            }
-
-            if (secondPart.length == 1) {
-                pubKeysY[i] = bytes32(secondPart[0]);
-            } else {
-                pubKeysY[i] = bytes32(secondPart);
+                pubKeysY[i] = secondPart;
             }
 
             pos += nextPubKeySize;
@@ -230,23 +227,7 @@ contract ZTESTZendBackupVault is Ownable {
     function _checkZenAddressFromScript(bytes20 zenAddress, bytes memory script) internal pure {
         bytes32 scriptHash = sha256(script);
         scriptHash = ripemd160(abi.encode(scriptHash));
-        //prefix is first two bytes
-        bytes memory prefix = new bytes(2);
-        prefix[0] = zenAddress[0];
-        prefix[1] = zenAddress[1];
-        bytes memory withPrefix = abi.encode(prefix, scriptHash);
-        //checksum (double hash)
-        bytes32 checksum_sha = sha256(withPrefix);
-        checksum_sha = sha256(abi.encode(checksum_sha));
-        //checksum is first 4 bytes
-        bytes memory checksum = new bytes(4);
-        checksum[0] = checksum_sha[0];
-        checksum[1] = checksum_sha[1];
-        checksum[2] = checksum_sha[2];
-        checksum[3] = checksum_sha[3];
-
-        bytes memory concatenated = abi.encode(withPrefix, checksum);
-        if(bytes20(concatenated) != zenAddress) revert AddressNotValid();
+        if(bytes20(scriptHash) != zenAddress) revert AddressNotValid();
     }
 
 
