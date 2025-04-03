@@ -15,9 +15,10 @@ contract ZTEST is ERC20, IERC20Mintable, AccessControl {
 
     error CallerNotMinter(address caller);
 
-    constructor(address _backupContract) ERC20("ZTest", "ZTEST") {
+    constructor(address _eonBackupContract, address _zendBackupContract) ERC20("ZTest", "ZTEST") {
         // Grant the minter role to a specified account
-        _grantRole(MINTER_ROLE, _backupContract);
+        _grantRole(MINTER_ROLE, _eonBackupContract);
+        _grantRole(MINTER_ROLE, _zendBackupContract);
     }
 
     function mint(address to, uint256 amount) public {

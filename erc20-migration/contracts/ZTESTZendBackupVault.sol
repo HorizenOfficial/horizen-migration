@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZTESTZendBackupVault
-/// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allow  manual claimining in the new chain.
+/// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allows  manual claiming in the new chain.
 ///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
 contract ZTESTZendBackupVault is Ownable {
@@ -26,8 +26,8 @@ contract ZTESTZendBackupVault is Ownable {
     // Cumulative Hash calculated
     bytes32 public _cumulativeHash;
 
-    // Final Cumulative Hash filled in the constructor, used for checkpoint, to unlock claim
-    bytes32 public immutable cumulativeHashCheckpoint;
+    // Final expected Cumulative Hash, used for checkpoint, to unlock claim
+    bytes32 public cumulativeHashCheckpoint;
 
     IERC20Mintable public zenToken;
 
@@ -36,6 +36,7 @@ contract ZTESTZendBackupVault is Ownable {
     error AddressNotValid();
     error CumulativeHashNotValid();
     error CumulativeHashCheckpointReached();
+    error CumulativeHashCheckpointNotSet();
     error UnauthorizedOperation();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
@@ -54,13 +55,17 @@ contract ZTESTZendBackupVault is Ownable {
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to perform restore operations
+    constructor(address _admin) Ownable(_admin) {
+    }
+
+    /// @notice Set expected cumulative hash after all the data has been loaded
     /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calculated with all the dump data.
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
-    constructor(address _admin, bytes32 _cumulativeHashCheckpoint) Ownable(_admin) {
-        if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();   
-        _cumulativeHash = bytes32(0);
+    function setCumulativeHashCeckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
+        if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();  
+        if (cumulativeHashCheckpoint != bytes32(0)) revert UnauthorizedOperation();  //already set
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
     }
 
@@ -68,6 +73,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
+        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
         if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
@@ -95,6 +101,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public canClaim(destAddress) {
+        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
