@@ -21,7 +21,6 @@ Usage:
 <i>npm install</i>
 
 2. To run locally the full test suite, that simulates the whole flow:<br>
-- Copy .env.test file as .env: <i>cp .env.test .env</i>
 - <i>npx hardhat test</i>
 
 3. (Optionally) If you want to run the test suite in real network:

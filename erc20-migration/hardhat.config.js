@@ -6,7 +6,15 @@ const web3 = require("web3");
 const fs = require("fs");
 const JSONbig = require("json-bigint")({ storeAsString: true });
 
-
+var accounts;
+if (process.env.ADMIN_PRIVK) {
+  accounts = [process.env.ADMIN_PRIVK];
+}
+else {
+  accounts = {
+    mnemonic: (process.env.MNEMONIC || "")
+  }
+}
 module.exports = {
   solidity: {
     version: "0.8.27",
@@ -18,20 +26,20 @@ module.exports = {
       evmVersion: "shanghai",
     },
   },
-  defaultNetwork: process.env.NETWORK,
+  defaultNetwork: (process.env.NETWORK || "hardhat"),
   networks: {
     basesepolia: {
       url: "https://sepolia.base.org",
-      accounts: [process.env.ADMIN_PRIVK]
+      accounts: accounts
     },
     horizenl3: {
-      url: process.env.NETWORK_URL,
-      accounts: [process.env.ADMIN_PRIVK]
+      url: (process.env.NETWORK_URL || ""),
+      accounts: accounts
     },
     test: {
-      url: process.env.NETWORK_URL,
-      accounts: {
-        mnemonic: process.env.MNEMONIC
+      url: (process.env.NETWORK_URL || ""),
+      accounts : {
+        mnemonic: (process.env.MNEMONIC || "")
       }
     }
   }
@@ -186,24 +194,24 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   console.log("TOKEN_ADDRESS: " + process.env.TOKEN_ADDRESS);
 
   console.log("Calculating cumulative account hash");
-  
+
   const accounts = loadAccountsFromFile(process.env.EON_FILE);
   let finalCumAccountHash = prepareCumulativeHash(accounts, updateEONCumulativeHash);
 
   console.log("Final account hash: ", finalCumAccountHash);
 
   console.log("Checking that EON final account hash is the expected one");
-  if (finalCumAccountHash !=  process.env.EON_HASH){
+  if (finalCumAccountHash != process.env.EON_HASH) {
     console.error("Calculated EON final account hash doesn't match with expected hash. Expected hash: " + process.env.EON_HASH +
       ", actual hash: " + finalCumAccountHash);
     exit(-1);
-   }
-   console.log("\u2705 EON final account hash verified correctly");
+  }
+  console.log("\u2705 EON final account hash verified correctly");
 
   const EONVault = await hre.ethers.getContractAt(EON_VAULT_CONTRACT_NAME, process.env.EON_VAULT_ADDRESS);
 
   console.log("Setting final account hash on EONVault");
-  let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash);   
+  let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash);
   let receipt = await res.wait();
   if (receipt.status == 0) {
     console.error("Setting final account hash on EONVault failed! Failed transaction: " + res);
@@ -359,17 +367,17 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   console.log("Final ZEND account hash: ", finalCumAccountHash);
 
   console.log("Checking that ZEND final account hash is the expected one");
-  if (finalCumAccountHash !=  process.env.ZEND_HASH){
+  if (finalCumAccountHash != process.env.ZEND_HASH) {
     console.error("Calculated ZEND final account hash doesn't match with expected hash. Expected hash: " + process.env.ZEND_HASH +
       ", actual hash: " + finalCumAccountHash);
     exit(-1);
-   }
-   console.log("\u2705 ZEND final account hash verified correctly");
+  }
+  console.log("\u2705 ZEND final account hash verified correctly");
 
   const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
 
   console.log("Setting final account hash on ZENDVault");
-  let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash);   
+  let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash);
   let receipt = await res.wait();
   if (receipt.status == 0) {
     console.error("Setting final account hash on ZENDVault failed! Failed transaction: " + res);
