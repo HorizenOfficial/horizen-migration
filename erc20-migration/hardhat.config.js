@@ -27,9 +27,14 @@ module.exports = {
     horizenl3: {
       url: process.env.NETWORK_URL,
       accounts: [process.env.ADMIN_PRIVK]
+    },
+    test: {
+      url: process.env.NETWORK_URL,
+      accounts: {
+        mnemonic: process.env.MNEMONIC
+      }
     }
   }
-
 };
 
 task("balances", "Prints the wallet balances", async (taskArgs, hre) => {
@@ -39,6 +44,36 @@ task("balances", "Prints the wallet balances", async (taskArgs, hre) => {
     console.log(ethers.formatEther(await hre.ethers.provider.getBalance(accounts[i].address)));
   }
 });
+
+task("hashEON", "Calculates the final hash for EON accounts", async (taskArgs, hre) => {
+  if (process.env.EON_FILE == null) {
+    console.error("EON_FILE environment variable not set: missing EON accounts file. Exiting.");
+    exit(-1);
+  }
+  console.log("Using EON accounts file: " + process.env.EON_FILE);
+  console.log("Calculating EON cumulative account hash");
+
+  let finalCumAccountHash = prepareCumulativeHash(process.env.EON_FILE, updateCumulativeHash);
+
+  console.log("Final EON account hash: ", finalCumAccountHash);
+
+});
+
+
+
+function prepareCumulativeHash(fileName, cumulativeFunc) {
+  const jsonFile = fs.readFileSync(fileName, 'utf-8');
+  const jsonData = JSONbig.parse(jsonFile);
+  const accounts = Object.entries(jsonData).map(([address, balance]) => [address, balance.toString()]);
+
+  let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  for (const [address, balance] of accounts) {
+    finalCumAccountHash = cumulativeFunc(finalCumAccountHash, address, balance);
+  }
+
+  return finalCumAccountHash;
+}
+
 
 function updateCumulativeHash(previousHash, address, value) {
   //the following hashing algorithm produces the same output as the one used in solidity
@@ -117,6 +152,13 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   }
   console.log("Final account hash: ", finalCumAccountHash);
 
+  console.log("Checking final account hash");
+  if (finalCumAccountHash !=  process.env.EON_HASH){
+    console.error("Calculated EON final account hash doesn't match with expected hash. Expected hash: " + process.env.EON_HASH +
+      ", actual hash: " + finalCumAccountHash);
+    exit(-1);
+   }
+   console.log("\u2705 EON final account hash verified correctly");
 
   const EONVault = await hre.ethers.getContractAt(EON_VAULT_CONTRACT_NAME, process.env.EON_VAULT_ADDRESS);
 
