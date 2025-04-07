@@ -25,11 +25,12 @@ Usage:
 - <i>npx hardhat test</i>
 
 3. (Optionally) If you want to run the test suite in real network:
-- create a .env file in the root folder with the following entries: 
+- Copy .env.test file as .env: <i>cp .env.test .env</i>
+- Update the following entries: 
    - NETWORK=test
    - MNEMONIC=<seed_phrase>, with the seed phrase of a metamask wallet with funds
    - NETWORK_URL=\<network url\>
-- rerun point 2.
+- Run <i>npx hardhat test</i>.
 
 4. To run the Hardhat task for restoring the EON accounts:<br>
 - Deploy on the network the ZTEST and ZTESTBackupVault contracts.  
@@ -44,33 +45,24 @@ Usage:
    <i>npx hardhat hashEON</i>
 - Update in .env file the entry EON_HASH with the hash calculated in the previous step.
 - Run <i>npx hardhat restoreEON</i>
-5. For testing the <i>restoreEON</i> task:
- - run <i>npx hardhat node</i>. This command will run a test node, with some predefined accounts.
- - Rename .env.template file to .env and update the entries: 
-    - NETWORK=horizenl3. 
-    - NETWORK_URL=http://127.0.0.1:8545
-    - ADMIN_PRIVK=\<private key\> private key of one of the predefined accounts
-    - EON_FILE=\<EON accounts file name\>
- - run <i>npx hardhat contractSetup</i>. This will deploy the needed contracts. 
- - Set the contract addresses in .env file:
-    - TOKEN_ADDRESS=\<address of ZTEST contract\>
-    - EON_VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
-     - Calculate the final hash of the EON accounts running the task:
-   <i>npx hardhat hashEON</i>
-- Update in .env file the entry EON_HASH with the hash calculated in the previous step.
-- run <i>npx hardhat restoreEON</i>
-6. To run the Hardhat task for restoring the Zend accounts:<br>
+
+5. To run the Hardhat task for restoring the Zend accounts:<br>
 - Deploy on the network the ZTESTZendBackupVault contract and ZTEST ERC20 contract, if not deployed yet.  
-- Create a .env file in the root folder with the entries: 
+- Rename .env.template file to .env and update the entries: 
     - NETWORK=\<network name\>, the name of the network to use. 
     - NETWORK_URL=\<network url\>
     - ADMIN_PRIVK=\<private key\> the private key of the account with the authority for restoring the accounts and minting the corresponding ZEN tokens. 
     - ZEND_VAULT_ADDRESS=\<address of ZTESTZendBackupVault contract\>
+    - TOKEN_ADDRESS=\<address of ZTEST contract\>
     - ZEND_FILE=\<ZEND accounts file name\> It is the name and path of the file generated using the script <i>zend_to_horizen.py</i>
+- Calculate the final hash of the ZEND accounts running the task:
+   <i>npx hardhat hashZEND</i>
+- Update in .env file the entry ZEND_HASH with the hash calculated in the previous step.
 - Run <i>npx hardhat restoreZEND</i>
-7. For testing the <i>restoreZEND</i> task:
+
+6. For testing the <i>restoreEON</i> and <i>npx hardhat restoreZEND</i> tasks:
  - run <i>npx hardhat node</i>. This command will run a test node, with some predefined accounts.
- - create a .env file in the root folder with the entries: 
+ - Rename .env.template file to .env and update the entries: 
     - NETWORK=horizenl3. 
     - NETWORK_URL=http://127.0.0.1:8545
     - ADMIN_PRIVK=\<private key\> private key of one of the predefined accounts
@@ -78,6 +70,15 @@ Usage:
     - ZEND_FILE=\<ZEND accounts file name\>
  - run <i>npx hardhat contractSetup</i>. This will deploy the needed contracts. 
  - Set the contract addresses in .env file:
+    - TOKEN_ADDRESS=\<address of ZTEST contract\>
+    - EON_VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
     - ZEND_VAULT_ADDRESS=\<address of ZTESTZendBackupVault contract\>
- - run <i>npx hardhat restoreZEND</i>
+- Calculate the final hash of the EON accounts running the task:
+   <i>npx hardhat hashEON</i>
+- Update in .env file the entry EON_HASH with the hash calculated in the previous step.
+- Calculate the final hash of the ZEND accounts running the task:
+   <i>npx hardhat hashZEND</i>
+- Update in .env file the entry ZEND_HASH with the hash calculated in the previous step.
+- Run <i>npx hardhat restoreEON</i>
+- Run <i>npx hardhat restoreZEND</i>
 
