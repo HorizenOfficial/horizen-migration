@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZendBackupVault
-/// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allows  manual claiming in the new chain.
-///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
-///         calculated with all the dump data.
+/// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, it allows manual claiming in the new chain.
+///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations. Before loading all the accounts,
+//          the cumulative hash calculated with all the accounts dump data must be set.
 contract ZendBackupVault is Ownable {
 
     struct AddressValue {
@@ -47,7 +47,7 @@ contract ZendBackupVault is Ownable {
     }
 
     /// @notice Set expected cumulative hash after all the data has been loaded
-    /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calculated with all the dump data.
+    /// @param _cumulativeHashCheckpoint  a cumulative recursive hash calculated with all the dump data.
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
@@ -59,7 +59,7 @@ contract ZendBackupVault is Ownable {
 
     /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
     ///         The zendAddresses in bs58 decoded format
-    ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
+    ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
         if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         uint256 i;
@@ -86,7 +86,7 @@ contract ZendBackupVault is Ownable {
     ///         destAddress is the receiver of the funds
     ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
-    ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
+    ///         (Claiming message is predefined and composed by the concatenation of the token symbol, the string 'ZENCLAIM' and the destAddress in lowercase string hex format)
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public {
@@ -98,9 +98,9 @@ contract ZendBackupVault is Ownable {
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
-            //signature was compreesed, also the zen address will be from the compressed format
+            //signature was compressed, also the zen address will be from the compressed format
              zenAddress = VerificationLibrary.pubKeyCompressedToZenAddress(pubKeyX, VerificationLibrary.signByte(pubKeyY));
-        }else{
+        } else {
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
 

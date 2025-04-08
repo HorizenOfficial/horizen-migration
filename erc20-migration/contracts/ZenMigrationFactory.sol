@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZenMigrationFactory
-/// @notice  This is a factory contract responsible for deploying the 3 contracts used for the migration. 
+/// @notice  This is a factory contract responsible for deploying the 3 contracts used for ZEN migration. 
 contract ZenMigrationFactory is Ownable {
 
     struct MigrationContracts {
@@ -18,13 +18,14 @@ contract ZenMigrationFactory is Ownable {
         ZendBackupVault zendVault;
     }
 
-    mapping(string => MigrationContracts) public migrationContracts;
-    string[] public tokenNames;
+    error TokenAlreadyExists(string tokenSymbol);
 
-    error TokenAlreadyExists(string tokenName);
+    /// Map of migration contracts related to a token with the specified symbol
+    mapping(string => MigrationContracts) public migrationContracts;
+    string[] public tokenSymbols;
 
     /// @notice Smart contract constructor
-    /// @param _admin The only entity authorized to perform restore operations
+    /// @param _admin The only entity authorized to deploy migration contracts and the future owner of the contracts themselves
     constructor(address _admin) Ownable(_admin) {}
 
 
@@ -35,11 +36,11 @@ contract ZenMigrationFactory is Ownable {
         string memory tokenName,
         string memory tokenSymbol
     ) public onlyOwner {
-        if (address(migrationContracts[tokenName].token) != address(0)) {
-            revert TokenAlreadyExists(tokenName);
+        if (address(migrationContracts[tokenSymbol].token) != address(0)) {
+            revert TokenAlreadyExists(tokenSymbol);
         }
 
-        tokenNames.push(tokenName);
+        tokenSymbols.push(tokenSymbol);
 
         EONBackupVault eonVault = new EONBackupVault(address(this));
         ZendBackupVault zendVault = new ZendBackupVault(address(this));
@@ -50,7 +51,7 @@ contract ZenMigrationFactory is Ownable {
             address(zendVault)
         );
 
-        migrationContracts[tokenName] = MigrationContracts(
+        migrationContracts[tokenSymbol] = MigrationContracts(
             token,
             eonVault,
             zendVault
@@ -64,6 +65,6 @@ contract ZenMigrationFactory is Ownable {
 
     /// @notice Returns the number of tokens to be migrated already deployed.  
     function getTokenNumber() public view returns (uint) {
-        return tokenNames.length;
+        return tokenSymbols.length;
     }
 }

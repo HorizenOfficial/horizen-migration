@@ -15,6 +15,9 @@ A cumulative hash of all the addresses + balances is calculated both off chain a
 Exposes methods to allow a central authority to load the ZEND balances to reward. Then the user can call the claim function for restoring their balance inside an address of their choice.<br>
 A cumulative hash of all the addresses + balances is calculated both off chain and onchain, allowing any external user to verify the fairness of the distribution.
 
+- ZenMigrationFactory.sol<br>
+The factory contract for deploying vault and token contracts.
+
 Usage:
 
 1. Install dependencies:<br>

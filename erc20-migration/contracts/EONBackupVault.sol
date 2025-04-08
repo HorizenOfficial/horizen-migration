@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title EONBackupVault
 /// @notice This contract is used to store balances from old EON chain, and, once all are loaded, distribute corresponding ZEN in the new chain.
-///         In the constructor will receive an admin address (owner), the only entity authorized to perform operations, and a cumulative hash 
-///         calculated with all the dump data.
+///         In the constructor will receive an admin address (owner), the only entity authorized to perform operations. Before loading all the accounts,
+//          the cumulative hash calculated with all the accounts dump data must be set.
+///         
 contract EONBackupVault is Ownable {
 
     struct AddressValue {

@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IERC20Mintable.sol";
 
 /// @title ZEN official ERC-20 smart contract
-/// @notice Minting role is granted in the constructor to the Backup Contract, responsible to 
-///         restore EON balances
+/// @notice Minting role is granted in the constructor to the Backup Contract, responsible for 
+///         restoring EON balances
 contract ZenToken is ERC20, IERC20Mintable, AccessControl {
 
     // Create a new role identifier for the minter role
