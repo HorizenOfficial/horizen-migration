@@ -145,7 +145,8 @@ contract ZTESTZendBackupVault is Ownable {
     ///         script is the script to claim, from which pubKeys will be extracted
     ///         pubKeysX and pubKeysY are the first 32 bytes and second 32 bytes of the signing keys for each one in the script (we use always the uncompressed format here)
     ///         If the signature is not present for that key, the pub keys x and y should be bytes32(0)
-    ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
+    ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the zenAddress and destAddress in lowercase string hex format)
+    ///         (zenAddress is the string representation with 0x prefix )
     function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) public canClaim(destAddress) {
 
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
@@ -154,8 +155,9 @@ contract ZTESTZendBackupVault is Ownable {
         bytes20 zenAddress = _extractZenAddressFromScript(script);
 
         //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
-        string memory asString = Strings.toChecksumHexString(destAddress);
-        string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
+        string memory destAddressAsString = Strings.toChecksumHexString(destAddress);
+        string memory zenAddressAsString = Strings.toHexString(address(zenAddress));
+        string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, zenAddressAsString, destAddressAsString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
 
         //check signatures

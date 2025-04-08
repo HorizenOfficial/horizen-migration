@@ -32,6 +32,7 @@ describe("ZEND Claim test", function () {
 
   var TEST_MULTISIG_DESTINATION_ADDRESS = "0xA89c7db6F4f3912674372Aaf7088b56d631301e6";
   var TEST_MULTISIG_SCRIPT;
+  var TEST_MULTISIG_ADDRESS;
   var TEST_MULTISIG_SIGNATURE_HEX_1;
   var TEST_MULTISIG_SIGNATURE_HEX_2;
   var TEST_MULTISIG_SIGNATURE_HEX_3;
@@ -71,7 +72,9 @@ describe("ZEND Claim test", function () {
 
     //multisig case - use the already created 3 wallets
     TEST_MULTISIG_SCRIPT = zencashjs.address.mkMultiSigRedeemScript([pubKey1, pubKey2, pubKey3], 2, 3);
-    var messageToSign = "ZENCLAIM"+TEST_MULTISIG_DESTINATION_ADDRESS;
+    var zenMultisigAddress = zencashjs.address.multiSigRSToAddress(TEST_MULTISIG_SCRIPT); 
+    TEST_MULTISIG_ADDRESS = "0x"+bs58check.decode(zenMultisigAddress).toString("hex").slice(4); //remove the chain prefix
+    var messageToSign = "ZENCLAIM"+TEST_MULTISIG_ADDRESS+TEST_MULTISIG_DESTINATION_ADDRESS;
     TEST_MULTISIG_SIGNATURE_HEX_1 = zencashjs.message.sign(messageToSign, privKey1, false).toString("hex");
     TEST_MULTISIG_SIGNATURE_HEX_2 = zencashjs.message.sign(messageToSign, privKey2, true).toString("hex");
     TEST_MULTISIG_SIGNATURE_HEX_3 = zencashjs.message.sign(messageToSign, privKey3, false).toString("hex");
@@ -169,8 +172,7 @@ describe("ZEND Claim test", function () {
   
     if(shouldInsertMultisigBalance) {
       //load data for multisig test
-      var zenMultisigAddress = zencashjs.address.multiSigRSToAddress(TEST_MULTISIG_SCRIPT); 
-      var TEST_MULTISIG_ADDRESS = "0x"+bs58check.decode(zenMultisigAddress).toString("hex").slice(4); //remove the chain prefix
+
 
       var dumpRecursiveHash = ZERO_BYTES32
       dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST_MULTISIG_ADDRESS, TEST_MULTISIG_VALUE);
