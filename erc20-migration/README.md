@@ -4,14 +4,14 @@ The script for Zend will just load all balances inside a vault contract. Then, e
 
 The scripts use the following contracts:
 
-- ZTEST.sol<br>
+- ZenToken.sol<br>
 The ERC-20 contract
 
-- ZTESTBackupVault.sol<br>
+- EONBackupVault.sol<br>
 Exposes methods to allow a central authority to load the EON balances to reward and to distribute them.<br>
 A cumulative hash of all the addresses + balances is calculated both off chain and onchain, allowing any external user to verify the fairness of the distribution.
 
-- ZTESTZendBackupVault.sol<br>
+- ZendBackupVault.sol<br>
 Exposes methods to allow a central authority to load the ZEND balances to reward. Then the user can call the claim function for restoring their balance inside an address of their choice.<br>
 A cumulative hash of all the addresses + balances is calculated both off chain and onchain, allowing any external user to verify the fairness of the distribution.
 
@@ -32,13 +32,13 @@ Usage:
 - Run <i>npx hardhat test</i>.
 
 4. To run the Hardhat task for restoring the EON accounts:<br>
-- Deploy on the network the ZTEST and ZTESTBackupVault contracts.  
+- Deploy on the network the ZenToken and EONBackupVault contracts.  
 - Rename .env.template file to .env and update the entries: 
     - NETWORK=\<network name\>, the name of the network to use. 
     - NETWORK_URL=\<network url\>
     - ADMIN_PRIVK=\<private key\> the private key of the account with the authority for restoring the accounts and minting the corresponding ZEN tokens. 
-    - TOKEN_ADDRESS=\<address of ZTEST contract\>
-    - EON_VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
+    - TOKEN_ADDRESS=\<address of ZenToken contract\>
+    - EON_VAULT_ADDRESS=\<address of EONBackupVault contract\>
     - EON_FILE=\<EON accounts file name\> It is tha name and path of the file generated using the script  <i>setup_eon2_json.py</i>
 - Calculate the final hash of the EON accounts running the task:
    <i>npx hardhat hashEON</i>
@@ -46,13 +46,13 @@ Usage:
 - Run <i>npx hardhat restoreEON</i>
 
 5. To run the Hardhat task for restoring the Zend accounts:<br>
-- Deploy on the network the ZTESTZendBackupVault contract and ZTEST ERC20 contract, if not deployed yet.  
+- Deploy on the network the ZendBackupVault contract and ZenToken ERC20 contract, if not deployed yet.  
 - Rename .env.template file to .env and update the entries: 
     - NETWORK=\<network name\>, the name of the network to use. 
     - NETWORK_URL=\<network url\>
     - ADMIN_PRIVK=\<private key\> the private key of the account with the authority for restoring the accounts and minting the corresponding ZEN tokens. 
-    - ZEND_VAULT_ADDRESS=\<address of ZTESTZendBackupVault contract\>
-    - TOKEN_ADDRESS=\<address of ZTEST contract\>
+    - ZEND_VAULT_ADDRESS=\<address of ZendBackupVault contract\>
+    - TOKEN_ADDRESS=\<address of ZenToken contract\>
     - ZEND_FILE=\<ZEND accounts file name\> It is the name and path of the file generated using the script <i>zend_to_horizen.py</i>
 - Calculate the final hash of the ZEND accounts running the task:
    <i>npx hardhat hashZEND</i>
@@ -69,9 +69,9 @@ Usage:
     - ZEND_FILE=\<ZEND accounts file name\>
  - run <i>npx hardhat contractSetup</i>. This will deploy the needed contracts. 
  - Set the contract addresses in .env file:
-    - TOKEN_ADDRESS=\<address of ZTEST contract\>
-    - EON_VAULT_ADDRESS=\<address of ZTESTBackupVault contract\>
-    - ZEND_VAULT_ADDRESS=\<address of ZTESTZendBackupVault contract\>
+    - TOKEN_ADDRESS=\<address of ZenToken contract\>
+    - EON_VAULT_ADDRESS=\<address of EONBackupVault contract\>
+    - ZEND_VAULT_ADDRESS=\<address of ZendBackupVault contract\>
 - Calculate the final hash of the EON accounts running the task:
    <i>npx hardhat hashEON</i>
 - Update in .env file the entry EON_HASH with the hash calculated in the previous step.

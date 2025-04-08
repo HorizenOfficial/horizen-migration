@@ -6,11 +6,11 @@ import {VerificationLibrary} from  './VerificationLibrary.sol';
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title ZTESTZendBackupVault
+/// @title ZendBackupVault
 /// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allows  manual claiming in the new chain.
 ///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
 ///         calcolated with all the dump data.
-contract ZTESTZendBackupVault is Ownable {
+contract ZendBackupVault is Ownable {
 
     struct AddressValue {
         bytes20 addr;

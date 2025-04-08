@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 import "./interfaces/IERC20Mintable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title ZTESTBackupVault
+/// @title EONBackupVault
 /// @notice This contract is used to store balances from old EON chain, and, once all are loaded, distribute corresponding ZEN in the new chain.
-///         In the constructor will receive an admin address (owner) , the only entity authorized to perform operations, and a cumulative hash 
-///         calcolated with all the dump data.
-contract ZTESTBackupVault is Ownable {
+///         In the constructor will receive an admin address (owner), the only entity authorized to perform operations, and a cumulative hash 
+///         calculated with all the dump data.
+contract EONBackupVault is Ownable {
 
     struct AddressValue {
         address addr;
