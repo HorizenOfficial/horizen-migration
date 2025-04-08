@@ -197,7 +197,7 @@ describe("ZEND Claim test", function () {
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, "0x"+TEST2_PUBLICKEY_Y, ZERO_BYTES32];
     
     await ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY);
-    await _checkMultisigBalance(ZTESTZendBackupVault);
+    await _checkMultisigBalance(ZTESTZendBackupVaultMultisig);
   });
 
   it("Multisig test - claim with signature 1 and 3", async function () {
@@ -207,7 +207,7 @@ describe("ZEND Claim test", function () {
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_Y];
 
     await ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY);
-    await _checkMultisigBalance(ZTESTZendBackupVault);
+    await _checkMultisigBalance(ZTESTZendBackupVaultMultisig);
   });
 
   it("Multisig test - claim with signature 2 and 3", async function () {
@@ -217,7 +217,7 @@ describe("ZEND Claim test", function () {
     let pubKeysY = [ZERO_BYTES32, "0x"+TEST2_PUBLICKEY_Y, "0x"+TEST3_PUBLICKEY_Y];
     
     await ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY);
-    await _checkMultisigBalance(ZTESTZendBackupVault);
+    await _checkMultisigBalance(ZTESTZendBackupVaultMultisig);
   });
 
   it("Multisig test - claim fails with not enough signatures", async function () {
