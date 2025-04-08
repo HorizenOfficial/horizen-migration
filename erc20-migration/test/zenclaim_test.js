@@ -182,36 +182,47 @@ describe("ZEND Claim test", function () {
     return ZTESTZendBackupVaultMultisig;
   }
 
+  async function _checkMultisigBalance(ZTESTZendBackupVaultMultisig) {
+    let erc20Address = await ZTESTZendBackupVaultMultisig.zenToken();
+    let factory = await ethers.getContractFactory("ZTEST");
+    let token = await factory.attach(erc20Address);
+    let balance = await token.balanceOf(TEST_MULTISIG_DESTINATION_ADDRESS);
+    expect(balance).to.equal(TEST_MULTISIG_VALUE);
+  }
+
   it("Multisig test - claim with signature 1 and 2", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_2, ZERO_BYTES32];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_2, "0x"];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, "0x"+TEST2_PUBLICKEY_X, ZERO_BYTES32];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, "0x"+TEST2_PUBLICKEY_Y, ZERO_BYTES32];
     
     await ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY);
+    await _checkMultisigBalance(ZTESTZendBackupVault);
   });
 
   it("Multisig test - claim with signature 1 and 3", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, ZERO_BYTES32, "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x", "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_X];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_Y];
 
     await ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY);
+    await _checkMultisigBalance(ZTESTZendBackupVault);
   });
 
   it("Multisig test - claim with signature 2 and 3", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = [ZERO_BYTES32, "0x"+TEST_MULTISIG_SIGNATURE_HEX_2, "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
+    let signatures = ["0x", "0x"+TEST_MULTISIG_SIGNATURE_HEX_2, "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
     let pubKeysX = [ZERO_BYTES32, "0x"+TEST2_PUBLICKEY_X, "0x"+TEST3_PUBLICKEY_X];
     let pubKeysY = [ZERO_BYTES32, "0x"+TEST2_PUBLICKEY_Y, "0x"+TEST3_PUBLICKEY_Y];
     
     await ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY);
+    await _checkMultisigBalance(ZTESTZendBackupVault);
   });
 
   it("Multisig test - claim fails with not enough signatures", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, ZERO_BYTES32, ZERO_BYTES32];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x", "0x"];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, ZERO_BYTES32, ZERO_BYTES32];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, ZERO_BYTES32, ZERO_BYTES32];
 
@@ -221,7 +232,7 @@ describe("ZEND Claim test", function () {
 
   it("Multisig test - claim fails with duplicated signatures", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_1, ZERO_BYTES32];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, "0x"+TEST2_PUBLICKEY_X, ZERO_BYTES32];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, "0x"+TEST2_PUBLICKEY_Y, ZERO_BYTES32];
 
@@ -231,7 +242,7 @@ describe("ZEND Claim test", function () {
 
   it("Multisig test - claim fails with duplicated pub keys", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_1, ZERO_BYTES32];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, "0x"+TEST1_PUBLICKEY_X, ZERO_BYTES32];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, "0x"+TEST1_PUBLICKEY_Y, ZERO_BYTES32];
 
@@ -251,7 +262,7 @@ describe("ZEND Claim test", function () {
 
   it("Multisig test - double claim fails the second time", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(true);
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, ZERO_BYTES32, "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x", "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_X];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_Y];
 
@@ -264,11 +275,11 @@ describe("ZEND Claim test", function () {
 
   it("Multisig test - claim fails if nothing to claim", async function () {
     let  ZTESTZendBackupVaultMultisig = await _deployContractForMultisigTests(false); //with false doesn't load the data
-    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, ZERO_BYTES32, "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
+    let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x", "0x"+TEST_MULTISIG_SIGNATURE_HEX_3];
     let pubKeysX = ["0x"+TEST1_PUBLICKEY_X, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_X];
     let pubKeysY = ["0x"+TEST1_PUBLICKEY_Y, ZERO_BYTES32, "0x"+TEST3_PUBLICKEY_Y];
 
     await expect( ZTESTZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeysX, pubKeysY))
-      .to.be.revertedWithCustomError(ZTESTZendBackupVaultMultisig, "NothingToClaim")
+      .to.be.revertedWithCustomError(ZTESTZendBackupVaultMultisig, "CumulativeHashCheckpointNotSet")
   });
 });

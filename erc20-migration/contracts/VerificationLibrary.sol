@@ -46,11 +46,11 @@ library VerificationLibrary {
          bytes32 hash = keccak256(abi.encodePacked(pubKeyX, pubKeyY));
         address ethAddress = address(uint160(uint256(hash)));
 
-        return msgSigner != address(0) && msgSigner == ethAddress; 
+        return msgSigner == ethAddress; 
     }
 
     function verifyZendSignature(bytes32 messageHash, Signature memory signature, bytes32 pubKeyX, bytes32 pubKeyY) internal pure {
-        if(!verifyZendSignatureBool(messageHash, signature, pubKeyX, pubKeyY)) revert InvalidSignature();
+        if(!verifyZendSignatureBool(messageHash, signature, pubKeyX, pubKeyY)) revert SignatureNotMatching();
     }
 
     /// @notice Create a message hash compatible with ZEND format from an arbitrary message string.

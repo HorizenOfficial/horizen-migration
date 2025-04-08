@@ -42,6 +42,8 @@ contract ZTESTZendBackupVault is Ownable {
     error NothingToClaim(bytes20 zenAddress);
     error InsufficientSignatures(uint256 number, uint256 required);
     error InvalidSignatureArrayLength();
+    error InvalidPublicKeysArraysLength();
+    error InvalidScriptLength();
     error InvalidPublicKeySize(uint256 size);
     error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
@@ -51,6 +53,7 @@ contract ZTESTZendBackupVault is Ownable {
         if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked 
         if (address(zenToken) == address(0)) revert ERC20NotSet();
         if (address(destAddress) == address(0)) revert AddressNotValid();
+        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();
         _;
     }
 
@@ -113,17 +116,16 @@ contract ZTESTZendBackupVault is Ownable {
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public canClaim(destAddress) {
-        if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
-            //signature was compreesed, also the zen address will be from the compressed format
+            //signature was compressed, also the zen address will be from the compressed format
              zenAddress = VerificationLibrary.pubKeyCompressedToZenAddress(pubKeyX, VerificationLibrary.signByte(pubKeyY));
         }else{
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
 
-        //signed message suppose address in EIP-55 format for lowercase and uppercase chars
+        //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
         string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
@@ -134,15 +136,15 @@ contract ZTESTZendBackupVault is Ownable {
     
     /// @notice Claim a P2SH balance.
     ///         destAddress is the receiver of the funds
-    ///         hexSignatures is the array of the signatures of the claiming message. Must be generated in a compressed format to claim a zend address
+    ///         hexSignatures is the array of the signatures of the claiming message. Must be generated in a compressed format if the public keys in the script are in compressed format, or uncompressed otherwise.
     ///
     ///         IMPORTANT: the array should have as length the number of public keys in the script. The signature in the "i" position should be the signature for the "i"
-    ///         pub key in the order it appears in the script. If the signature is not present for that key, it could be zero or invalid signature.
+    ///         pub key in the order it appears in the script. If the signature is not present for that key, it should be empty.
     ///         This is to avoid duplicated signatures without expensive checks.
     ///         
-    ///         script is the script to claim, from which pubKeys will be extractted
+    ///         script is the script to claim, from which pubKeys will be extracted
     ///         pubKeysX and pubKeysY are the first 32 bytes and second 32 bytes of the signing keys for each one in the script (we use always the uncompressed format here)
-    ///         If the signature is not present for that key, the pub keys x and y should be zero
+    ///         If the signature is not present for that key, the pub keys x and y should be bytes32(0)
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
     function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) public canClaim(destAddress) {
 
@@ -151,7 +153,7 @@ contract ZTESTZendBackupVault is Ownable {
         if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
         bytes20 zenAddress = _extractZenAddressFromScript(script);
 
-        //signed message suppose address in EIP-55 format for lowercase and uppercase chars
+        //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
         string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
@@ -159,12 +161,12 @@ contract ZTESTZendBackupVault is Ownable {
         //check signatures
         uint256 validSignatures;
         uint256 i;
-        while(i != hexSignatures.length) {
-            if(hexSignatures[i].length == 65) {
+        while(i != hexSignatures.length && validSignatures < minSignatures) {
+            if(pubKeysX[i] != bytes32(0) && hexSignatures[i].length != 0) {
                 VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
                 //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
                 if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeysX[i], pubKeysY[i])) {
-                    ++validSignatures;
+                    unchecked { ++validSignatures; }
                 }
             }
             unchecked { ++i; }
@@ -177,17 +179,20 @@ contract ZTESTZendBackupVault is Ownable {
 
     /// @notice verify public keys from multisignature script
     function _verifyPubKeysFromScript(bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) internal pure {
+        if(script.length < 2) revert InvalidScriptLength();
         uint256 total = uint256(uint8(script[script.length - 2])) - 80;
+
+        if(pubKeysX.length != pubKeysY.length || pubKeysX.length != total) revert InvalidPublicKeysArraysLength();
         uint256 pos = 1;
 
         uint256 i;
         while(i < total) {
             uint256 nextPubKeySize = uint256(uint8(script[pos]));
-            ++pos;
+            unchecked { ++pos; }
             if(nextPubKeySize != HORIZEN_COMPRESSED_PUBLIC_KEY_LENGTH && nextPubKeySize != HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) revert InvalidPublicKeySize(nextPubKeySize);
 
             //extract key
-            //first 32 btyes
+            //first 32 bytes
             bytes32 firstPart;
             uint256 firstPartStart = pos+1;
             assembly {
