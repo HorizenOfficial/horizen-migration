@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /// @title ZendBackupVault
 /// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, allows  manual claiming in the new chain.
 ///         In the constructor will receive an admin address (owner), the only entity authorized to perform load operations, and a cumulative hash 
-///         calcolated with all the dump data.
+///         calculated with all the dump data.
 contract ZendBackupVault is Ownable {
 
     struct AddressValue {
@@ -29,7 +29,8 @@ contract ZendBackupVault is Ownable {
 
     IERC20Mintable public zenToken;
 
-    string private constant MESSAGE_PREFIX = "ZENCLAIM";
+    string private constant BASE_MESSAGE_PREFIX = "ZENCLAIM";
+    string private message_prefix;
 
     error AddressNotValid();
     error CumulativeHashNotValid();
@@ -78,6 +79,7 @@ contract ZendBackupVault is Ownable {
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
         zenToken = IERC20Mintable(addr);
+        message_prefix = string(abi.encodePacked(zenToken.tokenSymbol(), BASE_MESSAGE_PREFIX));
     }
 
     /// @notice Claim a P2PKH balance.
@@ -108,7 +110,7 @@ contract ZendBackupVault is Ownable {
 
         //signed message suppose address in EIP-55 format for lowercase and uppercase chars
         string memory asString = Strings.toChecksumHexString(destAddress);
-        string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
+        string memory strMessageToSign = string(abi.encodePacked(message_prefix, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
         VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
 

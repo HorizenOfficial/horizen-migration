@@ -15,7 +15,7 @@ contract ZenToken is ERC20, IERC20Mintable, AccessControl {
 
     error CallerNotMinter(address caller);
 
-    constructor(string memory tokenName, string memory tokenSymbol, address _eonBackupContract, address _zendBackupContract) ERC20(tokenName, tokenSymbol) {
+    constructor(string memory tokenName, string memory symbol, address _eonBackupContract, address _zendBackupContract) ERC20(tokenName, symbol) {
         // Grant the minter role to a specified account
         _grantRole(MINTER_ROLE, _eonBackupContract);
         _grantRole(MINTER_ROLE, _zendBackupContract);
@@ -27,5 +27,9 @@ contract ZenToken is ERC20, IERC20Mintable, AccessControl {
             revert CallerNotMinter(msg.sender);
         }
         _mint(to, amount);
+    }
+
+    function tokenSymbol() external view returns (string memory){
+        return symbol();
     }
 }

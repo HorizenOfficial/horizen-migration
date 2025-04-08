@@ -6,6 +6,9 @@ const utils = require("./utils");
 
 describe("ZEND Claim test", function () {
 
+  const TOKEN_NAME = "ZTest"; 
+  const TOKEN_SYMBOL = "ZTEST";
+  const MESSAGE_PREFIX = TOKEN_SYMBOL + "ZENCLAIM";
   var admin;
   var ZendBackupVault;
   var erc20;  
@@ -38,7 +41,7 @@ describe("ZEND Claim test", function () {
     var pubKey1 = zencashjs.address.privKeyToPubKey(privKey1, false) // generate uncompressed pubKey   
     var zAddr1 = zencashjs.address.pubKeyToAddr(pubKey1);
     TEST1_ZEND_ADDRESS = "0x"+bs58check.decode(zAddr1).toString("hex").slice(4); //remove the chain prefix
-    var messageToSign = "ZENCLAIM"+TEST1_DESTINATION_ADDRESS;
+    var messageToSign = MESSAGE_PREFIX+TEST1_DESTINATION_ADDRESS;
     TEST1_SIGNATURE_HEX = zencashjs.message.sign(messageToSign, privKey1, false).toString("hex");
     TEST1_PUBLICKEY_X = pubKey1.substring(2,66);
     TEST1_PUBLICKEY_Y = pubKey1.substring(66);
@@ -48,7 +51,7 @@ describe("ZEND Claim test", function () {
     var pubKey2 = zencashjs.address.privKeyToPubKey(privKey2, true) // generate compressed pubKey   
     var zAddr2 = zencashjs.address.pubKeyToAddr(pubKey2);
     TEST2_ZEND_ADDRESS = "0x"+bs58check.decode(zAddr2).toString("hex").slice(4); //remove the chain prefix
-    var messageToSign = "ZENCLAIM"+TEST2_DESTINATION_ADDRESS;
+    var messageToSign = MESSAGE_PREFIX+TEST2_DESTINATION_ADDRESS;
     TEST2_SIGNATURE_HEX = zencashjs.message.sign(messageToSign, privKey2, true).toString("hex");
     var pubKeyUnc = zencashjs.address.privKeyToPubKey(privKey2, false) // x and y requires anyway uncompressed pubKey   
     TEST2_PUBLICKEY_X = pubKeyUnc.substring(2,66);
@@ -57,7 +60,7 @@ describe("ZEND Claim test", function () {
     //valid signature but nothing to claim
     var privKey3 = zencashjs.address.mkPrivKey('test number 3')
     var pubKey3 = zencashjs.address.privKeyToPubKey(privKey3, false) // generate uncompressed pubKey  
-    var messageToSign = "ZENCLAIM"+TEST3_DESTINATION_ADDRESS;
+    var messageToSign = MESSAGE_PREFIX+TEST3_DESTINATION_ADDRESS;
     TEST3_SIGNATURE_HEX = zencashjs.message.sign(messageToSign, privKey3, false).toString("hex");
     TEST3_PUBLICKEY_X = pubKey3.substring(2,66);
     TEST3_PUBLICKEY_Y = pubKey3.substring(66);
@@ -110,7 +113,7 @@ describe("ZEND Claim test", function () {
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
     const MOCK_EON_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
-    erc20 = await factory.deploy("ZTest", "ZTEST", MOCK_EON_VAULT_ADDRESS, await ZendBackupVault.getAddress());
+    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, MOCK_EON_VAULT_ADDRESS, await ZendBackupVault.getAddress());
   });
 
   it("Set ERC-20 contract reference in the backup contract", async function () {
