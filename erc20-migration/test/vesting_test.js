@@ -34,6 +34,7 @@ describe("Vesting test", function () {
     await erc20.mint(await vesting.getAddress(), AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM);
   });
 
+  //helpers functions
   async function _assertBalance(expectedBalance) {
     let balance = await erc20.balanceOf(beneficiary);
     expect(balance).to.be.equal(expectedBalance);
@@ -53,6 +54,7 @@ describe("Vesting test", function () {
     expect(vesting.claim()).to.be.revertedWithCustomError(vesting, errorName);
   }
 
+  // tests
   it("claim fails if no period has passed", async function () {
     await _setTimestampAndClaimFails(startTimestamp + TIME_BETWEEN_INTERVALS/2, "NothingToClaim");
   });
