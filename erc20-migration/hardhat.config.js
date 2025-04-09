@@ -127,9 +127,9 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
   let factory = await hre.ethers.getContractFactory(ZEN_FACTORY_CONTRACT_NAME);
   let ZenMigrationFactory = await factory.deploy(admin);
-  let res = await ZenMigrationFactory.deploymentTransaction().wait(); // Wait for confirmation
+  let receipt = await ZenMigrationFactory.deploymentTransaction().wait(); // Wait for confirmation
 
-  if (res.status == 0) {
+  if (receipt.status == 0) {
     console.error("Deploying migration factory contract failed!");
     exit(-1);
   }
@@ -138,9 +138,10 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
   let tokenName = "ZEN"
   let tokenSymbol = "ZEN"
-  res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol);    
+  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol);    
 
-  if (res.status == 0) {
+  receipt = await res.wait();
+  if (receipt.status == 0) {
     console.error("Deploying migration contracts failed!");
     exit(-1);
   }
@@ -150,52 +151,6 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   console.log(`Contract ZEND deployed at: ${contracts.zendVault}`);
   console.log(`Contract token deployed at: ${contracts.token}`);
 
-  // factory = await hre.ethers.getContractFactory(EON_VAULT_CONTRACT_NAME);
-  // let EONVault = await factory.deploy(admin);
-  // res = await EONVault.deploymentTransaction().wait(); // Wait for confirmation
-
-  // if (res.status == 0) {
-  //   console.error("Deploying EONVault contract failed!");
-  //   exit(-1);
-  // }
-  // console.log(`EONVault contract deployed at: ${EONVault.target}`);
-
-  // console.log("Deploying ZENDVault contract");
-  // factory = await hre.ethers.getContractFactory(ZEND_VAULT_CONTRACT_NAME);
-  // let ZENDVault = await factory.deploy(admin);
-  // res = await ZENDVault.deploymentTransaction().wait(); // Wait for confirmation
-
-  // if (res.status == 0) {
-  //   console.error("Deploying ZENDVault contract failed!");
-  //   exit(-1);
-  // }
-  // console.log(`ZENDVault contract deployed at: ${ZENDVault.target}`);
-
-  // console.log("Deploying ZENToken contract");
-  // factory = await hre.ethers.getContractFactory(ZEN_TOKEN_CONTRACT_NAME);
-  // let ZENToken = await factory.deploy(await ZENDVault.getAddress(), await EONVault.getAddress());
-  // console.log(`ZENToken contract deployed at: ${ZENToken.target}`);
-  // res = await ZENToken.deploymentTransaction().wait(); // Wait for confirmation
-
-  // if (res.status == 0) {
-  //   console.error("Deploying ZENToken contract failed!");
-  //   exit(-1);
-  // }
-
-  // console.log("Set ERC-20 contract reference in the EON vault contract");
-  // res = await EONVault.setERC20(await ZENToken.getAddress());
-  // if (res.status == 0) {
-  //   console.error("Setting ERC-20 contract reference in the EON vault contract failed!");
-  //   exit(-1);
-  // }
-
-  // console.log("Set ERC-20 contract reference in the ZEND vault contract");
-  // res = await ZENDVault.setERC20(await ZENToken.getAddress());
-
-  // if (res.status == 0) {
-  //   console.error("Setting ERC-20 contract reference in the ZENDVault vault contract failed!");
-  //   exit(-1);
-  // }
 
 });
 
