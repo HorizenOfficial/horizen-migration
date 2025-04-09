@@ -8,10 +8,9 @@ contract LinearTokenVesting {
     address immutable token;
     address immutable beneficiary;
     uint256 immutable amountForEachClaim;
+    uint256 immutable startTimestamp;
     uint256 immutable timeBetweenClaims; 
     uint256 immutable intervalsToClaim;
-
-    uint256 lastClaimedIntervalTimestamp;
     uint256 intervalsAlreadyClaimed;
 
     event Claimed(uint256 claimAmount, uint256 timestamp);
@@ -26,27 +25,24 @@ contract LinearTokenVesting {
         timeBetweenClaims = _timeBetweenClaims;
         intervalsToClaim = _intervalsToClaim;
 
-        lastClaimedIntervalTimestamp = _startTimestamp;
+        startTimestamp = _startTimestamp;
     }
 
     function claim() public {
         if(intervalsAlreadyClaimed == intervalsToClaim) revert ClaimCompleted();
-        if(block.timestamp - lastClaimedIntervalTimestamp < timeBetweenClaims) revert NothingToClaim();
 
-        uint256 tempTimestamp = lastClaimedIntervalTimestamp;
-        uint256 tempInterval = intervalsAlreadyClaimed;
-        uint256 amountToClaimNow; // = 0
+        uint256 periodsPassed = (block.timestamp - (startTimestamp + timeBetweenClaims * intervalsAlreadyClaimed)) / timeBetweenClaims;
+        if(periodsPassed == 0) revert NothingToClaim();
 
-        while (tempTimestamp + timeBetweenClaims <= block.timestamp && tempInterval < intervalsToClaim) {
-            amountToClaimNow += amountForEachClaim;
-            tempTimestamp += timeBetweenClaims;
-            ++tempInterval;
-        }
-
-        lastClaimedIntervalTimestamp = tempTimestamp;
-        intervalsAlreadyClaimed = tempInterval;
-
+        uint256 intervalsToClaimNow = _min(intervalsToClaim - intervalsAlreadyClaimed, periodsPassed); 
+        uint256 amountToClaimNow = intervalsToClaimNow * amountForEachClaim;
+        
         emit Claimed(amountToClaimNow, block.timestamp);
+        intervalsAlreadyClaimed += intervalsToClaimNow;
         ERC20(token).transfer(beneficiary, amountToClaimNow);
+    }
+
+    function _min(uint256 a, uint256 b) internal pure returns(uint256) {
+        return a < b? a : b;
     }
 }
