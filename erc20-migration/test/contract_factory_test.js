@@ -10,8 +10,14 @@ describe("Migration Contracts Factory testing", function () {
   var admin;
   var ZenMigrationFactory;
 
-  it("Deployment of the backup contract", async function () {
+  before(async function () {
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(3);
     admin = (await ethers.getSigners())[0];
+    
+  });
+
+
+  it("Deployment of the backup contract", async function () {
     console.log("admin: " + admin.address);
     let factory = await ethers.getContractFactory("ZenMigrationFactory");    
     ZenMigrationFactory = await factory.deploy(admin);
