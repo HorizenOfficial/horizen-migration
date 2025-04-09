@@ -37,6 +37,10 @@ describe("Vesting test", function () {
   async function _assertBalance(expectedBalance) {
     let balance = await erc20.balanceOf(beneficiary);
     expect(balance).to.be.equal(expectedBalance);
+    
+    //check contract balance
+    let contractBalance = await erc20.balanceOf(await vesting.getAddress());
+    expect(contractBalance).to.be.equal(AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM - expectedBalance);
   }
 
   async function _setTimestampAndClaim(claimTimestamp) {
