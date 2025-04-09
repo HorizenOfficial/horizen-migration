@@ -66,6 +66,13 @@ describe("Vesting test", function () {
     await _setTimestampAndClaimFails(startTimestamp + TIME_BETWEEN_INTERVALS * (INTERVALS_TO_CLAIM+1), "ClaimCompleted");
   });
 
+  it("claim success for all periods without claiming more after a long time", async function () {
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS*2); //claim two
+    await _assertBalance(AMOUNT_EACH_CLAIM*2);
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * (INTERVALS_TO_CLAIM+100)); //claim after a long time
+    await _assertBalance(AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM);
+  });
+
   it("claim after one period, then claim success if multiple periods has passed", async function () {
     await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 1.5);
     await _assertBalance(AMOUNT_EACH_CLAIM);
