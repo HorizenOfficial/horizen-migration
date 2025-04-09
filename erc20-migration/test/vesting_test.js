@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { hrtime } = require("process");
+const { start } = require("repl");
 
 
 describe("Vesting test", function () {
@@ -38,30 +39,37 @@ describe("Vesting test", function () {
     expect(balance).to.be.equal(expectedBalance);
   }
 
-  async function _setTimetampAndClaim(claimTimestamp) {
+  async function _setTimestampAndClaim(claimTimestamp) {
     await time.setNextBlockTimestamp(claimTimestamp);
     await vesting.claim();
   }
 
-  async function _setTimetampAndClaimFails(claimTimestamp, errorName) {
+  async function _setTimestampAndClaimFails(claimTimestamp, errorName) {
     await time.setNextBlockTimestamp(claimTimestamp);
     expect(vesting.claim()).to.be.revertedWithCustomError(vesting, errorName);
   }
 
-  it("TODO claim fails if no period has passed", async function () {
-    await time.setNextBlockTimestamp(startTimestamp+1);
-    expect(true).to.be.equal(true);
+  it("claim fails if no period has passed", async function () {
+    await _setTimestampAndClaimFails(startTimestamp + TIME_BETWEEN_INTERVALS/2, "NothingToClaim");
   });
 
-  it("TODO claim success for one period in between, then a second period", async function () {
-    expect(true).to.be.equal(true);
+  it("claim success for one period in between, then a second period", async function () {
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 1.5);
+    await _assertBalance(AMOUNT_EACH_CLAIM);
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 2);
+    await _assertBalance(AMOUNT_EACH_CLAIM*2);
   });
 
-  it("TODO claim success for all periods, then fails", async function () {
-    expect(true).to.be.equal(true);
+  it("claim success for all periods, then fails", async function () {
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * INTERVALS_TO_CLAIM);
+    await _assertBalance(AMOUNT_EACH_CLAIM * INTERVALS_TO_CLAIM);
+    await _setTimestampAndClaimFails(startTimestamp + TIME_BETWEEN_INTERVALS * (INTERVALS_TO_CLAIM+1), "ClaimCompleted");
   });
 
-  it("TODO claim after one period, then claim success if multiple periods has passed", async function () {
-    expect(true).to.be.equal(true);
+  it("claim after one period, then claim success if multiple periods has passed", async function () {
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 1.5);
+    await _assertBalance(AMOUNT_EACH_CLAIM);
+    await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 5.5);
+    await _assertBalance(AMOUNT_EACH_CLAIM*5);
   });
 });

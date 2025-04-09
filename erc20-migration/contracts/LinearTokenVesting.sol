@@ -37,7 +37,7 @@ contract LinearTokenVesting {
         uint256 tempInterval = intervalsAlreadyClaimed;
         uint256 amountToClaimNow; // = 0
 
-        while (tempTimestamp + timeBetweenClaims < block.timestamp && tempInterval < intervalsToClaim) {
+        while (tempTimestamp + timeBetweenClaims <= block.timestamp && tempInterval < intervalsToClaim) {
             amountToClaimNow += amountForEachClaim;
             tempTimestamp += timeBetweenClaims;
             ++tempInterval;
