@@ -34,6 +34,12 @@ describe("ZEND Claim test", function () {
   var TEST3_PUBLICKEY_X;
   var TEST3_PUBLICKEY_Y;
 
+
+  var TEST4_VALUE = 234000000000;
+  var TEST4_ZEND_ADDRESS;
+
+  var TOTAL_ZEND_BALANCE = TEST1_VALUE + TEST2_VALUE + TEST4_VALUE;
+
   before(async function () {
     //prepare test data
 
@@ -65,6 +71,11 @@ describe("ZEND Claim test", function () {
     TEST3_SIGNATURE_HEX = zencashjs.message.sign(messageToSign, privKey3, false).toString("hex");
     TEST3_PUBLICKEY_X = pubKey3.substring(2,66);
     TEST3_PUBLICKEY_Y = pubKey3.substring(66);
+
+    var privKey4 = zencashjs.address.mkPrivKey('4-midable')
+    var pubKey4 = zencashjs.address.privKeyToPubKey(privKey4, false) // generate uncompressed pubKey  
+    var zAddr4 = zencashjs.address.pubKeyToAddr(pubKey4);
+    TEST4_ZEND_ADDRESS = "0x" + bs58check.decode(zAddr4).toString("hex").slice(4); //remove the chain prefix
   });
 
   function updateCumulativeHash(previousHash, address, value){
@@ -77,6 +88,7 @@ describe("ZEND Claim test", function () {
     dumpRecursiveHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
     dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST1_ZEND_ADDRESS, TEST1_VALUE);
     dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST2_ZEND_ADDRESS, TEST2_VALUE); 
+    dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST4_ZEND_ADDRESS, TEST4_VALUE); 
   }); 
 
   it("Deployment of the backup contract", async function () {
@@ -89,31 +101,19 @@ describe("ZEND Claim test", function () {
     expect(await ZendBackupVault.message_prefix()).to.be.equal(""); 
   });
 
+  it("Check store balances fails if cumulative hash checkpoint not set", async function () {
+    var calcCumulativeHash = updateCumulativeHash(dumpRecursiveHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
+    await expect(ZendBackupVault.batchInsert(calcCumulativeHash, [{addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE}])).to.be.revertedWithCustomError(ZendBackupVault, "CumulativeHashCheckpointNotSet");
+  });
+
   it("Set cumulative hash checkpoint in the backup contract", async function () {
     await ZendBackupVault.setCumulativeHashCheckpoint(dumpRecursiveHash);    
   });
 
-  it("Store backup balances in the contract", async function () {
-    var addressesValues = [];
-    var calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-    addressesValues.push({addr: TEST1_ZEND_ADDRESS, value: TEST1_VALUE});
-    calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST1_ZEND_ADDRESS, TEST1_VALUE);
-    addressesValues.push({addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE});
-    calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
-
-    await ZendBackupVault.batchInsert(calcCumulativeHash, addressesValues); 
-  });
-
-  it("Check store balances fails if cumulative hash checkpoint reached", async function () {
+  it("Check store balances fails if ERC20 not set", async function () {
     var calcCumulativeHash = updateCumulativeHash(dumpRecursiveHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
-    await expect(ZendBackupVault.batchInsert(calcCumulativeHash, [{addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE}])).to.be.revertedWithCustomError(ZendBackupVault, "CumulativeHashCheckpointReached");
+    await expect(ZendBackupVault.batchInsert(calcCumulativeHash, [{addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE}])).to.be.revertedWithCustomError(ZendBackupVault, "ERC20NotSet");
   });
-
-  it("Check recursive hash from the contract matches with the local one", async function () {
-    var cumulativeHashFromContract = await ZendBackupVault._cumulativeHash();
-    expect(dumpRecursiveHash).to.equal(cumulativeHashFromContract);
-  });  
 
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
@@ -133,6 +133,48 @@ describe("ZEND Claim test", function () {
      expect(await ZendBackupVault.message_prefix()).to.be.equal(MESSAGE_PREFIX);   
   });
 
+  it("First batchInsert in the contract", async function () {
+    var addressesValues = [];
+    var calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+    addressesValues.push({addr: TEST1_ZEND_ADDRESS, value: TEST1_VALUE});
+    calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST1_ZEND_ADDRESS, TEST1_VALUE);
+    addressesValues.push({addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE});
+    calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
+
+    await ZendBackupVault.batchInsert(calcCumulativeHash, addressesValues); 
+    expect(await ZendBackupVault._cumulativeHash()).to.equal(calcCumulativeHash);
+
+  });
+
+  it("Check that first batch ZENs were minted", async function () {
+    expect(await erc20.balanceOf(await ZendBackupVault.getAddress())).to.equal(TEST1_VALUE + TEST2_VALUE);
+  });  
+
+  it("Second batchInsert in the contract", async function () {
+    var addressesValues = [];
+    var calcCumulativeHash = await ZendBackupVault._cumulativeHash();
+
+    addressesValues.push({addr: TEST4_ZEND_ADDRESS, value: TEST4_VALUE});
+    calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, TEST4_ZEND_ADDRESS, TEST4_VALUE);
+
+    await ZendBackupVault.batchInsert(calcCumulativeHash, addressesValues); 
+
+  });
+
+  it("Check that first batch ZENs were minted", async function () {
+    expect(await erc20.balanceOf(await ZendBackupVault.getAddress())).to.equal(TOTAL_ZEND_BALANCE);
+  });  
+
+  it("Check store balances fails if cumulative hash checkpoint reached", async function () {
+    var calcCumulativeHash = updateCumulativeHash(dumpRecursiveHash, TEST2_ZEND_ADDRESS, TEST2_VALUE);
+    await expect(ZendBackupVault.batchInsert(calcCumulativeHash, [{addr: TEST2_ZEND_ADDRESS, value: TEST2_VALUE}])).to.be.revertedWithCustomError(ZendBackupVault, "CumulativeHashCheckpointReached");
+  });
+
+  it("Check recursive hash from the contract matches with the local one", async function () {
+    var cumulativeHashFromContract = await ZendBackupVault._cumulativeHash();
+    expect(dumpRecursiveHash).to.equal(cumulativeHashFromContract);
+  });  
 
   it("Claim of a P2PKH uncompressed", async function () {
     await ZendBackupVault.claimP2PKH(TEST1_DESTINATION_ADDRESS, "0x"+TEST1_SIGNATURE_HEX, "0x"+TEST1_PUBLICKEY_X, "0x"+TEST1_PUBLICKEY_Y);

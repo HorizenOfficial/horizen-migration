@@ -60,21 +60,28 @@ contract ZendBackupVault is Ownable {
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
     }
 
-    /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
-    ///         The zendAddresses in bs58 decoded format
+    /// @notice Insert a new batch of account tuples (bytes20, value) and updates the cumulative hash. The total balance of all accounts is minted and assigned to Zend Vault contract.
+    ///         The zend addresses are in bs58 decoded format, without prefix and checksum.
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly
+    /// @param expectedCumulativeHash  the cumulative recursive hash calculated with all the data already inserted plus the current batch.
+    /// @param addressValues new accounts batch to insert 
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
         if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
+        if (address(zenToken) == address(0)) revert ERC20NotSet();
+        if (_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
+        
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
-        if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
+        uint256 cumulativeBalance;
         while (i != addressValues.length) {
             balances[addressValues[i].addr] = addressValues[i].value;
             auxHash = keccak256(abi.encode(auxHash, addressValues[i].addr, addressValues[i].value));
+            unchecked {cumulativeBalance = cumulativeBalance + addressValues[i].value; }
             unchecked { ++i; }
         }
         _cumulativeHash = auxHash;
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
+        zenToken.mint(address(this), cumulativeBalance);
     }
 
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
