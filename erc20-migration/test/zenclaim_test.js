@@ -8,7 +8,8 @@ describe("ZEND Claim test", function () {
 
   const TOKEN_NAME = "ZTest"; 
   const TOKEN_SYMBOL = "ZTEST";
-  const MESSAGE_PREFIX = TOKEN_SYMBOL + "ZENCLAIM";
+  const BASE_MESSAGE_PREFIX = "So long and thanks for all the fish";
+  const MESSAGE_PREFIX = TOKEN_SYMBOL + BASE_MESSAGE_PREFIX;
   var admin;
   var ZendBackupVault;
   var erc20;  
@@ -81,7 +82,11 @@ describe("ZEND Claim test", function () {
   it("Deployment of the backup contract", async function () {
     admin = (await ethers.getSigners())[0];
     var factory = await ethers.getContractFactory(utils.ZEND_VAULT_CONTRACT_NAME);    
-    ZendBackupVault = await factory.deploy(admin);
+    ZendBackupVault = await factory.deploy(admin, BASE_MESSAGE_PREFIX);
+    const receipt = await ZendBackupVault.deploymentTransaction().wait(); // Wait for confirmation
+    utils.printReceipt("Deploy of ZendBackupVault contract", receipt);
+
+    expect(await ZendBackupVault.message_prefix()).to.be.equal(""); 
   });
 
   it("Set cumulative hash checkpoint in the backup contract", async function () {
@@ -123,6 +128,11 @@ describe("ZEND Claim test", function () {
   it("Cannot set again ERC-20 contract reference in the backup contract", async function () {
     await expect(ZendBackupVault.setERC20(await erc20.getAddress())).to.be.revertedWithCustomError(ZendBackupVault, "UnauthorizedOperation");    
   });
+
+  it("Check message prefix", async function () {
+     expect(await ZendBackupVault.message_prefix()).to.be.equal(MESSAGE_PREFIX);   
+  });
+
 
   it("Claim of a P2PKH uncompressed", async function () {
     await ZendBackupVault.claimP2PKH(TEST1_DESTINATION_ADDRESS, "0x"+TEST1_SIGNATURE_HEX, "0x"+TEST1_PUBLICKEY_X, "0x"+TEST1_PUBLICKEY_Y);

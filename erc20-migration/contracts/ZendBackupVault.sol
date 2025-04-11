@@ -29,8 +29,9 @@ contract ZendBackupVault is Ownable {
 
     IERC20Mintable public zenToken;
 
-    string private constant BASE_MESSAGE_PREFIX = "ZENCLAIM";
-    string private message_prefix;
+    string private MESSAGE_CONSTANT;
+    /// First part of the message to sign, needed for zen claim operation. It is composed by the token symbol + MESSAGE_CONSTANT
+    string public message_prefix;
 
     error AddressNotValid();
     error CumulativeHashNotValid();
@@ -43,7 +44,9 @@ contract ZendBackupVault is Ownable {
 
     /// @notice Smart contract constructor
     /// @param _admin  the only entity authorized to perform restore operations
-    constructor(address _admin) Ownable(_admin) {
+    /// @param base_message  one of the parts of the message to sign for zen claim
+    constructor(address _admin, string memory base_message) Ownable(_admin) {
+        MESSAGE_CONSTANT = base_message;
     }
 
     /// @notice Set expected cumulative hash after all the data has been loaded
@@ -79,14 +82,14 @@ contract ZendBackupVault is Ownable {
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
         zenToken = IERC20Mintable(addr);
-        message_prefix = string(abi.encodePacked(zenToken.tokenSymbol(), BASE_MESSAGE_PREFIX));
+        message_prefix = string(abi.encodePacked(zenToken.tokenSymbol(), MESSAGE_CONSTANT));
     }
 
     /// @notice Claim a P2PKH balance.
     ///         destAddress is the receiver of the funds
     ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
-    ///         (Claiming message is predefined and composed by the concatenation of the token symbol, the string 'ZENCLAIM' and the destAddress in lowercase string hex format)
+    ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destAddress in lowercase string hex format)
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public {

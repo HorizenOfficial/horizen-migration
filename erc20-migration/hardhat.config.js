@@ -138,7 +138,8 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
   let tokenName = "ZEN"
   let tokenSymbol = "ZEN"
-  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol);    
+  let base_message = "CLAIM"
+  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message);    
 
   receipt = await res.wait();
   if (receipt.status == 0) {
@@ -146,10 +147,9 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
     exit(-1);
   }
   
-  let contracts = await ZenMigrationFactory.migrationContracts(tokenName);
-  console.log(`Contract EON deployed at: ${contracts.eonVault}`);
-  console.log(`Contract ZEND deployed at: ${contracts.zendVault}`);
-  console.log(`Contract token deployed at: ${contracts.token}`);
+  console.log(`Contract EON deployed at: ${await ZenMigrationFactory.eonVault()}`);
+  console.log(`Contract ZEND deployed at: ${await ZenMigrationFactory.zendVault()}`);
+  console.log(`Contract token deployed at: ${await ZenMigrationFactory.token()}`);
 
 
 });
