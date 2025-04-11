@@ -18,6 +18,11 @@ contract ZTESTZendBackupVault is Ownable {
         bytes20 addr;
         uint256 value;
     }
+
+    struct PubKey {
+        bytes32 x;
+        bytes32 y;
+    }
     
     // Map of the claimable balances.
     // The key is the zendAddress in bs58 decoded format
@@ -113,14 +118,14 @@ contract ZTESTZendBackupVault is Ownable {
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the destAddress in lowercase string hex format)
     ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
-    function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public canClaim(destAddress) {
+    function claimP2PKH(address destAddress, bytes memory hexSignature, PubKey calldata pubKey) public canClaim(destAddress) {
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
             //signature was compressed, also the zen address will be from the compressed format
-             zenAddress = VerificationLibrary.pubKeyCompressedToZenAddress(pubKeyX, VerificationLibrary.signByte(pubKeyY));
+             zenAddress = VerificationLibrary.pubKeyCompressedToZenAddress(pubKey.x, VerificationLibrary.signByte(pubKey.y));
         }else{
-             zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
+             zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKey.x, pubKey.y);
         }
         //check amount to claim
         if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
@@ -129,7 +134,7 @@ contract ZTESTZendBackupVault is Ownable {
         string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(MESSAGE_PREFIX, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
-        VerificationLibrary.verifyZendSignature(messageHash, signature, pubKeyX, pubKeyY);
+        VerificationLibrary.verifyZendSignature(messageHash, signature, pubKey.x, pubKey.y);
 
         _claim(destAddress, zenAddress);
     }
@@ -147,11 +152,11 @@ contract ZTESTZendBackupVault is Ownable {
     ///         If the signature is not present for that key, the pub keys x and y should be bytes32(0)
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the zenAddress and destAddress in lowercase string hex format)
     ///         (zenAddress is the string representation with 0x prefix )
-    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) public canClaim(destAddress) {
-        if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
+    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, PubKey[] calldata pubKeys) public canClaim(destAddress) {
+        if(hexSignatures.length != pubKeys.length) revert InvalidSignatureArrayLength(); //check method doc
 
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
-        _verifyPubKeysFromScript(script, pubKeysX, pubKeysY);
+        _verifyPubKeysFromScript(script, pubKeys);
         bytes20 zenAddress = _extractZenAddressFromScript(script);
         //check amount to claim
         if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
@@ -166,11 +171,10 @@ contract ZTESTZendBackupVault is Ownable {
         uint256 validSignatures;
         uint256 i;
         while(i != hexSignatures.length && validSignatures < minSignatures) {
-            bool skip = (pubKeysX[i] == bytes32(0) && pubKeysY[i] != 0) || hexSignatures[i].length == 0; 
-            if(!skip) {
+            if((pubKeys[i].x != bytes32(0) || pubKeys[i].y == 0) && hexSignatures[i].length != 0) {
                 VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
                 //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
-                if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeysX[i], pubKeysY[i])) {
+                if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeys[i].x, pubKeys[i].y)) {
                     unchecked { ++validSignatures; }
                 }
             }
@@ -183,11 +187,11 @@ contract ZTESTZendBackupVault is Ownable {
     }
 
     /// @notice verify public keys from multisignature script
-    function _verifyPubKeysFromScript(bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) internal pure {
+    function _verifyPubKeysFromScript(bytes memory script, PubKey[] calldata pubKeys) internal pure {
         if(script.length < 2) revert InvalidScriptLength();
         uint256 total = uint256(uint8(script[script.length - 2])) - 80;
 
-        if(pubKeysX.length != pubKeysY.length || pubKeysX.length != total) revert InvalidPublicKeysArraysLength();
+        if(pubKeys.length != total) revert InvalidPublicKeysArraysLength();
         uint256 pos = 1;
 
         uint256 i;
@@ -209,10 +213,10 @@ contract ZTESTZendBackupVault is Ownable {
                 mstore(resultPtr, mload(offset))
                 firstPart := mload(resultPtr)
             }
-            if(pubKeysX[i] != 0 && pubKeysX[i] != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeysX[i]);
+            if(pubKeys[i].x != 0 && pubKeys[i].x != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeys[i].x);
 
             //second part
-            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH && pubKeysY[i] != 0) { //uncompressed case
+            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH && pubKeys[i].y != 0) { //uncompressed case
                 bytes32 secondPart;
                 uint256 secondPartStart = pos + 33;
                 assembly {
@@ -223,7 +227,7 @@ contract ZTESTZendBackupVault is Ownable {
                     mstore(resultPtr, mload(offset))
                     secondPart := mload(resultPtr)
                 }
-                if(pubKeysY[i] != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeysY[i]);
+                if(pubKeys[i].y != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeys[i].y);
             }
             //in compressed case, we just check first part
 
