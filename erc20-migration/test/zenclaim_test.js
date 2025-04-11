@@ -99,7 +99,7 @@ describe("ZEND Claim test", function () {
   });
 
   it("Set cumulative hash checkpoint in the backup contract", async function () {
-    await ZTESTZendBackupVault.setCumulativeHashCeckpoint(dumpRecursiveHash);    
+    await ZTESTZendBackupVault.setCumulativeHashCheckpoint(dumpRecursiveHash);    
   });
 
   it("Store backup balances in the contract", async function () {
@@ -176,7 +176,7 @@ describe("ZEND Claim test", function () {
 
       var dumpRecursiveHash = ZERO_BYTES32
       dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST_MULTISIG_ADDRESS, TEST_MULTISIG_VALUE);
-      await ZTESTZendBackupVaultMultisig.setCumulativeHashCeckpoint(dumpRecursiveHash); 
+      await ZTESTZendBackupVaultMultisig.setCumulativeHashCheckpoint(dumpRecursiveHash); 
   
       let addressesValues = [{addr: TEST_MULTISIG_ADDRESS, value: TEST_MULTISIG_VALUE}];
       await ZTESTZendBackupVaultMultisig.batchInsert(dumpRecursiveHash, addressesValues); 

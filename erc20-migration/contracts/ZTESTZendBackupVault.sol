@@ -67,7 +67,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
-    function setCumulativeHashCeckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
+    function setCumulativeHashCheckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
         if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();  
         if (cumulativeHashCheckpoint != bytes32(0)) revert UnauthorizedOperation();  //already set
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
@@ -99,9 +99,7 @@ contract ZTESTZendBackupVault is Ownable {
 
     /// @notice Internal claim function, to reuse the code between P2PKH and P2PSH
     function _claim(address destAddress, bytes20 zenAddress) internal {
-        //check amount to claim
         uint256 amount = balances[zenAddress];
-        if (amount == 0) revert NothingToClaim(zenAddress);
         
         balances[zenAddress] = 0;
         zenToken.mint(destAddress, amount);
@@ -124,6 +122,8 @@ contract ZTESTZendBackupVault is Ownable {
         }else{
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKeyX, pubKeyY);
         }
+        //check amount to claim
+        if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
 
         //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
         string memory asString = Strings.toChecksumHexString(destAddress);
@@ -148,11 +148,13 @@ contract ZTESTZendBackupVault is Ownable {
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the zenAddress and destAddress in lowercase string hex format)
     ///         (zenAddress is the string representation with 0x prefix )
     function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, bytes32[] memory pubKeysX, bytes32[] memory pubKeysY) public canClaim(destAddress) {
+        if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
 
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
         _verifyPubKeysFromScript(script, pubKeysX, pubKeysY);
-        if(hexSignatures.length != pubKeysX.length) revert InvalidSignatureArrayLength(); //check method doc
         bytes20 zenAddress = _extractZenAddressFromScript(script);
+        //check amount to claim
+        if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
 
         //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
         string memory destAddressAsString = Strings.toChecksumHexString(destAddress);
@@ -164,7 +166,8 @@ contract ZTESTZendBackupVault is Ownable {
         uint256 validSignatures;
         uint256 i;
         while(i != hexSignatures.length && validSignatures < minSignatures) {
-            if(pubKeysX[i] != bytes32(0) && hexSignatures[i].length != 0) {
+            bool skip = (pubKeysX[i] == bytes32(0) && pubKeysY[i] != 0) || hexSignatures[i].length == 0; 
+            if(!skip) {
                 VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
                 //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
                 if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeysX[i], pubKeysY[i])) {
@@ -191,6 +194,7 @@ contract ZTESTZendBackupVault is Ownable {
         while(i < total) {
             uint256 nextPubKeySize = uint256(uint8(script[pos]));
             unchecked { ++pos; }
+
             if(nextPubKeySize != HORIZEN_COMPRESSED_PUBLIC_KEY_LENGTH && nextPubKeySize != HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) revert InvalidPublicKeySize(nextPubKeySize);
 
             //extract key
@@ -205,10 +209,10 @@ contract ZTESTZendBackupVault is Ownable {
                 mstore(resultPtr, mload(offset))
                 firstPart := mload(resultPtr)
             }
-            if(pubKeysX[i] != bytes32(0) && pubKeysX[i] != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeysX[i]);
+            if(pubKeysX[i] != 0 && pubKeysX[i] != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeysX[i]);
 
             //second part
-            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) { //uncompressed case
+            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH && pubKeysY[i] != 0) { //uncompressed case
                 bytes32 secondPart;
                 uint256 secondPartStart = pos + 33;
                 assembly {
@@ -219,7 +223,7 @@ contract ZTESTZendBackupVault is Ownable {
                     mstore(resultPtr, mload(offset))
                     secondPart := mload(resultPtr)
                 }
-                if(pubKeysY[i] != bytes32(0) && pubKeysY[i] != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeysY[i]);
+                if(pubKeysY[i] != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeysY[i]);
             }
             //in compressed case, we just check first part
 
