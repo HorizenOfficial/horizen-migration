@@ -177,13 +177,19 @@ describe("ZEND Claim test", function () {
   });  
 
   it("Claim of a P2PKH uncompressed", async function () {
+    let zendVaultBalance = await erc20.balanceOf(await ZendBackupVault.getAddress());
     await ZendBackupVault.claimP2PKH(TEST1_DESTINATION_ADDRESS, "0x"+TEST1_SIGNATURE_HEX, "0x"+TEST1_PUBLICKEY_X, "0x"+TEST1_PUBLICKEY_Y);
     expect(await erc20.balanceOf(TEST1_DESTINATION_ADDRESS)).to.equal(TEST1_VALUE);
+    expect(await erc20.totalSupply(), "the total supply shouldn't change").to.equal(TOTAL_ZEND_BALANCE);
+    expect(await erc20.balanceOf(await ZendBackupVault.getAddress())).to.equal(zendVaultBalance - BigInt(TEST1_VALUE));
   });
 
   it("Claim of a P2PKH compressed", async function () {
+    let zendVaultBalance = await erc20.balanceOf(await ZendBackupVault.getAddress());
     await ZendBackupVault.claimP2PKH(TEST2_DESTINATION_ADDRESS, "0x"+TEST2_SIGNATURE_HEX, "0x"+TEST2_PUBLICKEY_X, "0x"+TEST2_PUBLICKEY_Y);
     expect(await erc20.balanceOf(TEST2_DESTINATION_ADDRESS)).to.equal(TEST2_VALUE);
+    expect(await erc20.totalSupply(), "the total supply shouldn't change").to.equal(TOTAL_ZEND_BALANCE);
+    expect(await erc20.balanceOf(await ZendBackupVault.getAddress())).to.equal(zendVaultBalance - BigInt(TEST2_VALUE));
   });
 
   it("Correct signature but nothing to claim", async function () {
