@@ -15,10 +15,19 @@ contract LinearTokenVesting {
 
     event Claimed(uint256 claimAmount, uint256 timestamp);
 
+    error AddressParameterCantBeZero();
+    error TokenAndBeneficiaryCantBeTheSame();
+    error AmountCantBeZero();
+    error InvalidTimes();
     error NothingToClaim();
     error ClaimCompleted();
 
     constructor(address _token, address _beneficiary, uint256 _amountForEachClaim, uint256 _startTimestamp, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) {
+        if(_token == address(0) || _beneficiary == address(0)) revert AddressParameterCantBeZero();
+        if(_token == _beneficiary) revert TokenAndBeneficiaryCantBeTheSame();
+        if(_timeBetweenClaims == 0 || _startTimestamp < block.timestamp) revert InvalidTimes();
+        if(_amountForEachClaim == 0) revert AmountCantBeZero();
+        
         token = _token;
         beneficiary = _beneficiary;
         amountForEachClaim = _amountForEachClaim;
@@ -36,7 +45,7 @@ contract LinearTokenVesting {
 
         uint256 intervalsToClaimNow = _min(intervalsToClaim - intervalsAlreadyClaimed, periodsPassed); 
         uint256 amountToClaimNow = intervalsToClaimNow * amountForEachClaim;
-        
+
         emit Claimed(amountToClaimNow, block.timestamp);
         intervalsAlreadyClaimed += intervalsToClaimNow;
         ERC20(token).transfer(beneficiary, amountToClaimNow);
