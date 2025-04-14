@@ -43,6 +43,7 @@ Usage:
     - TOKEN_ADDRESS=\<address of ZenToken contract\>
     - EON_VAULT_ADDRESS=\<address of EONBackupVault contract\>
     - EON_FILE=\<EON accounts file name\> It is tha name and path of the file generated using the script  <i>setup_eon2_json.py</i>
+
 - Calculate the final hash of the EON accounts running the task:
    <i>npx hardhat hashEON</i>
 - Update in .env file the entry EON_HASH with the hash calculated in the previous step.
