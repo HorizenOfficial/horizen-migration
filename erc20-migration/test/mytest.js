@@ -45,8 +45,8 @@ describe("Token and EON Backup contract testing", function () {
   });
 
   it("Set cumulative hash checkpoint in the backup contract", async function () {
-    var res = await ZTESTBackupVault.setCumulativeHashCeckpoint(dumpRecursiveHash);    
-    printReceipt("Set  cumulative hash checkpoin in vault", await res.wait());
+    var res = await ZTESTBackupVault.setCumulativeHashCheckpoint(dumpRecursiveHash);    
+    printReceipt("Set cumulative hash checkpoint in vault", await res.wait());
   });
 
   it("Store backup balances in the contract (in batches of "+BATCH_LENGTH+")", async function () {

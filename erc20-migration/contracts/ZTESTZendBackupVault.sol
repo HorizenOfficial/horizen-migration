@@ -50,7 +50,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the claim 
     ///                                   can start
-    function setCumulativeHashCeckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
+    function setCumulativeHashCheckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
         if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();  
         if (cumulativeHashCheckpoint != bytes32(0)) revert UnauthorizedOperation();  //already set
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
