@@ -89,7 +89,8 @@ contract ZendBackupVault is Ownable {
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
         zenToken = ZenToken(addr);
-        message_prefix = string(abi.encodePacked(zenToken.tokenSymbol(), MESSAGE_CONSTANT));
+        message_prefix = string(abi.encodePacked(zenToken.symbol(), MESSAGE_CONSTANT));
+
     }
 
     /// @notice Claim a P2PKH balance.

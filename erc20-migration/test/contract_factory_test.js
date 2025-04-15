@@ -40,10 +40,15 @@ describe("Migration Contracts Factory testing", function () {
 
     let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message);
     utils.printReceipt("Create migration contracts", await res.wait());
+    const token = await ZenMigrationFactory.token()
 
-    expect(await ZenMigrationFactory.token()).to.be.not.equal(NULL_ADDRESS);
-    expect(await ZenMigrationFactory.eonVault()).to.be.not.equal(NULL_ADDRESS);
-    expect(await ZenMigrationFactory.zendVault()).to.be.not.equal(NULL_ADDRESS);
+    expect(token).to.be.not.equal(NULL_ADDRESS);
+    const eonVault = await ZenMigrationFactory.eonVault();
+    expect(eonVault).to.be.not.equal(NULL_ADDRESS);
+    const zendVault = await ZenMigrationFactory.zendVault();
+    expect(zendVault).to.be.not.equal(NULL_ADDRESS);
+
+    await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated').withArgs(token, eonVault, zendVault);
 
   });
 
