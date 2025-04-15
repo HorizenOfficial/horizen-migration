@@ -18,6 +18,8 @@ contract ZenMigrationFactory is Ownable {
 
     error TokenAlreadyExists();
 
+    event ZenMigrationContractsCreated(address token, address eonVault, address zendVault);
+
     /// @notice Smart contract constructor
     /// @param _admin The only entity authorized to deploy migration contracts and the future owner of the contracts themselves
     constructor(address _admin) Ownable(_admin) {}
@@ -49,6 +51,8 @@ contract ZenMigrationFactory is Ownable {
 
         eonVault.transferOwnership(owner());
         zendVault.transferOwnership(owner());
+
+       emit ZenMigrationContractsCreated(address(token), address(eonVault), address(zendVault));
     }
 
 }
