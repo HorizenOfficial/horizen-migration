@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IERC20Mintable.sol";
+import "./ZenToken.sol";
 import "./EONBackupVault.sol";
 import "./ZendBackupVault.sol";
-import "./ZenToken.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -12,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /// @notice  This is a factory contract responsible for deploying the 3 contracts used for ZEN migration.
 contract ZenMigrationFactory is Ownable {
 
-    IERC20Mintable public token;
+    ZenToken public token;
     EONBackupVault public eonVault;
     ZendBackupVault public zendVault;
 

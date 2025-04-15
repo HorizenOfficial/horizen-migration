@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT 
 pragma solidity ^0.8.0;
 
-import "./interfaces/IERC20Mintable.sol";
+import "./ZenToken.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title EONBackupVault
@@ -31,7 +31,7 @@ contract EONBackupVault is Ownable {
     // Tracks rewarded addresses (next address to reward)
     uint256 private nextRewardIndex;
 
-    IERC20Mintable public zenToken;
+    ZenToken public zenToken;
 
     error AddressNotValid();
     error CumulativeHashNotValid();
@@ -79,7 +79,7 @@ contract EONBackupVault is Ownable {
     function setERC20(address addr) public onlyOwner {  
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
-        zenToken = IERC20Mintable(addr);
+        zenToken = ZenToken(addr);
     }
     
     /// @notice Distribute ZEN for the next (max) 500 addresses, until we have reached the end of the list
