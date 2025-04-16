@@ -28,7 +28,7 @@ contract EONBackupVault is Ownable {
     // Final expected Cumulative Hash, used for checkpoint, to unlock distribution
     bytes32 public cumulativeHashCheckpoint;      
   
-    // Tracks rewarded addresses (next address to reward)
+    // Tracks rewarded addresses (index to next address to reward)
     uint256 private nextRewardIndex;
 
     ZenToken public zenToken;
@@ -48,23 +48,23 @@ contract EONBackupVault is Ownable {
     }
 
     /// @notice Set expected cumulative hash after all the data has been loaded
-    /// @param _cumulativeHashCheckpoint  a cumulative recursive  hash calculated with all the dump data.
+    /// @param _cumulativeHashCheckpoint  a cumulative recursive hash calculated with all the dump data.
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
     ///                                   can start
-    function setCumulativeHashCheckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
+    function setCumulativeHashCheckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner {
         if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();  
         if (cumulativeHashCheckpoint != bytes32(0)) revert UnauthorizedOperation();  //already set
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
     }
 
     /// @notice Insert a new batch of tuples (address, value) and updates the cumulative hash.
-    ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
+    ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
         if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
+        if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
-        if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
         while (i != addressValues.length) {
             balances[addressValues[i].addr] = addressValues[i].value;
             addressList.push(addressValues[i].addr);
@@ -89,16 +89,24 @@ contract EONBackupVault is Ownable {
         if (address(zenToken) == address(0)) revert ERC20NotSet();
         if (_cumulativeHash != cumulativeHashCheckpoint) revert CumulativeHashNotValid(); //Loaded data not matching - distribution locked
         if (nextRewardIndex == addressList.length) revert NothingToDistribute();        
+
         uint256 count = 0;
-        while (nextRewardIndex < addressList.length && count < 500) {
-            address addr = addressList[nextRewardIndex];      
+        uint256 _nextRewardIndex = nextRewardIndex;
+        while (_nextRewardIndex < addressList.length && count < 500) {
+            address addr = addressList[_nextRewardIndex];      
             uint256 amount = balances[addr];
             if (amount > 0) {                
                 balances[addr] = 0;
                 zenToken.mint(addr, amount);
             }
-            nextRewardIndex++;
-            count++;
+            unchecked { 
+                _nextRewardIndex++;
+                count++;
+            }
+        }
+        nextRewardIndex = _nextRewardIndex;
+        if (nextRewardIndex == addressList.length){
+            zenToken.notifyMintingDone();
         }
     }
 

@@ -12,43 +12,49 @@ describe("Migration Contracts Factory testing", function () {
   const tokenName = "NEZ"
   const tokenSymbol = "TNEZ"
   const base_message = "Tityre tu patulae recubans sub tegmine fagi"
-  const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
-
 
   before(async function () {
     expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(3);
     admin = (await ethers.getSigners())[0];
-    
+
   });
 
 
-  it("Deployment of the backup contract", async function () {
+  it("Deployment of the Factory contract", async function () {
     console.log("admin: " + admin.address);
     let factory = await ethers.getContractFactory("ZenMigrationFactory");
     ZenMigrationFactory = await factory.deploy(admin);
-    console.log(`Contract deployed at: ${ZenMigrationFactory.target}`);
+    console.log(`Factory contract deployed at: ${ZenMigrationFactory.target}`);
     const receipt = await ZenMigrationFactory.deploymentTransaction().wait(); // Wait for confirmation
-    utils.printReceipt("Deploy of factory contract", receipt);
-    expect(await ZenMigrationFactory.token()).to.be.equal(NULL_ADDRESS);
-    expect(await ZenMigrationFactory.eonVault()).to.be.equal(NULL_ADDRESS);
-    expect(await ZenMigrationFactory.zendVault()).to.be.equal(NULL_ADDRESS);
-
+    expect(await ZenMigrationFactory.token()).to.be.equal(utils.NULL_ADDRESS);
+    expect(await ZenMigrationFactory.eonVault()).to.be.equal(utils.NULL_ADDRESS);
+    expect(await ZenMigrationFactory.zendVault()).to.be.equal(utils.NULL_ADDRESS);
   });
 
 
   it("Create migration contracts", async function () {
 
-    let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message);
-    utils.printReceipt("Create migration contracts", await res.wait());
+    let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, utils.HORIZEN_FOUNDATION);
     const token = await ZenMigrationFactory.token()
 
-    expect(token).to.be.not.equal(NULL_ADDRESS);
+
+    expect(token).to.be.not.equal(utils.NULL_ADDRESS);
     const eonVault = await ZenMigrationFactory.eonVault();
-    expect(eonVault).to.be.not.equal(NULL_ADDRESS);
+    expect(eonVault).to.be.not.equal(utils.NULL_ADDRESS);
     const zendVault = await ZenMigrationFactory.zendVault();
-    expect(zendVault).to.be.not.equal(NULL_ADDRESS);
+    expect(zendVault).to.be.not.equal(utils.NULL_ADDRESS);
 
     await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated').withArgs(token, eonVault, zendVault);
+
+  });
+
+
+  it("Check token contract", async function () {
+    let token = await ZenMigrationFactory.token();
+    let ZENToken = await hre.ethers.getContractAt(utils.ZEN_TOKEN_CONTRACT_NAME, token);
+    expect(await ZENToken.horizenFoundation()).to.be.equal(utils.HORIZEN_FOUNDATION);
+    expect(await ZENToken.name()).to.be.equal(tokenName);
+    expect(await ZENToken.symbol()).to.be.equal(tokenSymbol);
 
   });
 
@@ -60,11 +66,12 @@ describe("Migration Contracts Factory testing", function () {
 
   });
 
+
   it("Negative test - Calling again deployMigrationContracts", async function () {
     let tokenName = "FOO"
     let tokenSymbol = "FOO"
 
-    await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message)).to.be.revertedWithCustomError(ZenMigrationFactory, "TokenAlreadyExists");
+    await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, utils.HORIZEN_FOUNDATION)).to.be.revertedWithCustomError(ZenMigrationFactory, "TokenAlreadyExists");
   });
 
 
@@ -72,16 +79,13 @@ describe("Migration Contracts Factory testing", function () {
 
     const dumpRecursiveHash = "0x0000000000000000000000000000000000000000000000000000000000000001";
 
- 
     let eonVault = await ZenMigrationFactory.eonVault();
     let EONVault = await hre.ethers.getContractAt(utils.EON_VAULT_CONTRACT_NAME, eonVault);
     let res = await EONVault.setCumulativeHashCheckpoint(dumpRecursiveHash);
-    utils.printReceipt("Set cumulative hash checkpoint in eon vault", await res.wait());
 
     let zendVault = await ZenMigrationFactory.zendVault();
     let ZENDVault = await hre.ethers.getContractAt(utils.ZEND_VAULT_CONTRACT_NAME, zendVault);
     res = await ZENDVault.setCumulativeHashCheckpoint(dumpRecursiveHash);
-    utils.printReceipt("Set cumulative hash checkpoint in zend vault", await res.wait());
 
   });
 

@@ -122,7 +122,12 @@ task("hashZEND", "Calculates the final hash for ZEND accounts", async (taskArgs,
 
 task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
-  console.log("Deploying migration factory contract");
+  console.log("Deploying migration factory contracts");
+  if (process.env.HORIZEN_FOUNDATION == null) {
+    console.error("HORIZEN_FOUNDATION environment variable not set: missing HORIZEN Foundation account address. Exiting.");
+    exit(-1);
+  }
+
   const admin = (await ethers.getSigners())[0];
 
   let factory = await hre.ethers.getContractFactory(ZEN_FACTORY_CONTRACT_NAME);
@@ -139,7 +144,7 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   let tokenName = "ZEN"
   let tokenSymbol = "ZEN"
   let base_message = "CLAIM"
-  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message);    
+  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, process.env.HORIZEN_FOUNDATION);    
 
   receipt = await res.wait();
   if (receipt.status == 0) {
@@ -211,8 +216,10 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
   let batchNumber = 0;
   let totalUsedGas = BigInt(0);
+  let totalBalance = BigInt(0);
 
   for (const [address, balance] of accounts) {
+    totalBalance = totalBalance + BigInt(balance);
     addressesValues.push({ addr: address, value: balance });
     calcCumulativeHash = updateEONCumulativeHash(calcCumulativeHash, address, balance);
     if (addressesValues.length == BATCH_LENGTH) {
@@ -323,7 +330,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   }
   console.log("***************************************************************");
 
-
+  console.log("\nEON Total Restored Balance: " + totalBalance);
 });
 
 task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
@@ -376,8 +383,10 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
   let batchNumber = 0;
   let totalUsedGas = BigInt(0);
+  let totalBalance = BigInt(0);
 
   for (const [address, balance] of accounts) {
+    totalBalance = totalBalance + BigInt(balance);
     addressesValues.push({ addr: address, value: balance });
     calcCumulativeHash = updateZENDCumulativeHash(calcCumulativeHash, address, balance);
     if (addressesValues.length == BATCH_LENGTH) {
@@ -464,8 +473,50 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
       console.log(msg);
   }
   console.log("***************************************************************");
-
-
+  console.log("\nZEND Total Restored Balance: " + totalBalance);
 });
 
 
+task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
+  if (process.env.TOKEN_ADDRESS == null) {
+    console.error("TOKEN_ADDRESS environment variable not set: missing ZEN ERC20 token contract address. Exiting.")
+    exit(-1);
+  }
+
+  if (process.env.EON_TOTAL_BALANCE == null) {
+    console.error("EON_TOTAL_BALANCE environment variable not set. Exiting.")
+    exit(-1);
+  }
+  console.log("EON_TOTAL_BALANCE: " + process.env.EON_TOTAL_BALANCE);
+
+  if (process.env.ZEND_TOTAL_BALANCE == null) {
+    console.error("ZEND_TOTAL_BALANCE environment variable not set. Exiting.")
+    exit(-1);
+  }
+  console.log("ZEND_TOTAL_BALANCE: " + process.env.ZEND_TOTAL_BALANCE);
+
+  if (process.env.HORIZEN_FOUNDATION == null) {
+    console.error("HORIZEN_FOUNDATION environment variable not set: missing Horizen Foundation account address. Exiting.");
+    exit(-1);
+  }
+  
+  const MAX_ZEN_SUPPLY = BigInt(21_000_000n) * BigInt(10 ** 18);
+  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
+  const totalSupply = await ZENToken.totalSupply();
+
+  if (totalSupply != MAX_ZEN_SUPPLY){
+    console.error("Zen tokens total supply not minted. Exiting.")
+    exit(-1);    
+  }
+
+
+  let zenFoundationBalance = await ZENToken.balanceOf(process.env.HORIZEN_FOUNDATION);
+  const expectedZenFoundationBalance = MAX_ZEN_SUPPLY - BigInt(process.env.ZEND_TOTAL_BALANCE) - BigInt(process.env.EON_TOTAL_BALANCE);
+  console.log("Horizen Foundation address balance: " + zenFoundationBalance);
+  console.log("Total balance: " + (zenFoundationBalance + BigInt(process.env.ZEND_TOTAL_BALANCE) + BigInt(process.env.EON_TOTAL_BALANCE)));
+  if (zenFoundationBalance != expectedZenFoundationBalance){
+    console.error("Remaining ZEN supply not assigned to Horizen Foundation address {0}. Expected balance: {1}, actual balance {2}", process.env.HORIZEN_FOUNDATION, expectedZenFoundationBalance, zenFoundationBalance);
+    exit(-1);        
+  }
+  console.log("Result: OK");
+});

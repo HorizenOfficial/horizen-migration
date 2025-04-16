@@ -40,6 +40,7 @@ contract ZendBackupVault is Ownable {
     error UnauthorizedOperation();
     error ERC20NotSet();
     error NothingToClaim(bytes20 zenAddress);
+
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
 
     /// @notice Smart contract constructor
@@ -82,6 +83,10 @@ contract ZendBackupVault is Ownable {
         _cumulativeHash = auxHash;
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
         zenToken.mint(address(this), cumulativeBalance);
+
+        if (cumulativeHashCheckpoint == _cumulativeHash){
+            zenToken.notifyMintingDone();
+        }
     }
 
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
@@ -94,11 +99,11 @@ contract ZendBackupVault is Ownable {
     }
 
     /// @notice Claim a P2PKH balance.
-    ///         destAddress is the receiver of the funds
-    ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
+    /// @param  destAddress is the receiver of the funds
+    /// @param  hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
     ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destAddress in lowercase string hex format)
-    ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
+    /// @param  pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, bytes32 pubKeyX, bytes32 pubKeyY) public {
         if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
