@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { hrtime } = require("process");
 const { start } = require("repl");
-
+const utils = require("./utils");
 
 describe("Vesting test", function () {
 
@@ -16,12 +16,15 @@ describe("Vesting test", function () {
   let startTimestamp;
 
   beforeEach(async function () {
-    beneficiary = (await ethers.getSigners())[0].address;
-
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(3);
+    beneficiary = (await ethers.getSigners())[2].address;
+    const TOKEN_NAME = "ZTest";
+    const TOKEN_SYMBOL = "ZTEST";
     //deploy erc20
-    let factory = await ethers.getContractFactory("ZTEST");
-    const MOCK_EON_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
-    erc20 = await factory.deploy(MOCK_EON_VAULT_ADDRESS, beneficiary);
+    let factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
+    const MOCK_EON_VAULT_ADDRESS = (await ethers.getSigners())[0];
+    const MOCK_ZEND_VAULT_ADDRESS = (await ethers.getSigners())[1];
+    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, MOCK_ZEND_VAULT_ADDRESS, MOCK_EON_VAULT_ADDRESS, beneficiary);
     await erc20.deploymentTransaction().wait();
 
     //deploy vesting
