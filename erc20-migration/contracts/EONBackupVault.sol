@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT 
 pragma solidity ^0.8.0;
 
-import "./interfaces/IERC20Mintable.sol";
+import "./ZenToken.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title ZTESTBackupVault
+/// @title EONBackupVault
 /// @notice This contract is used to store balances from old EON chain, and, once all are loaded, distribute corresponding ZEN in the new chain.
-///         In the constructor will receive an admin address (owner) , the only entity authorized to perform operations, and a cumulative hash 
-///         calcolated with all the dump data.
-contract ZTESTBackupVault is Ownable {
+///         In the constructor will receive an admin address (owner), the only entity authorized to perform operations. Before loading all the accounts,
+//          the cumulative hash calculated with all the accounts dump data must be set.
+///         
+contract EONBackupVault is Ownable {
 
     struct AddressValue {
         address addr;
@@ -30,7 +31,7 @@ contract ZTESTBackupVault is Ownable {
     // Tracks rewarded addresses (next address to reward)
     uint256 private nextRewardIndex;
 
-    IERC20Mintable public zenToken;
+    ZenToken public zenToken;
 
     error AddressNotValid();
     error CumulativeHashNotValid();
@@ -51,7 +52,7 @@ contract ZTESTBackupVault is Ownable {
     ///                                   Will be used to verify the consistency of the restored data, and as
     ///                                   a checkpoint to understand when all the data has been loaded and the distribution 
     ///                                   can start
-    function setCumulativeHashCeckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
+    function setCumulativeHashCheckpoint(bytes32 _cumulativeHashCheckpoint) public onlyOwner{
         if(_cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashNotValid();  
         if (cumulativeHashCheckpoint != bytes32(0)) revert UnauthorizedOperation();  //already set
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
@@ -78,7 +79,7 @@ contract ZTESTBackupVault is Ownable {
     function setERC20(address addr) public onlyOwner {  
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
-        zenToken = IERC20Mintable(addr);
+        zenToken = ZenToken(addr);
     }
     
     /// @notice Distribute ZEN for the next (max) 500 addresses, until we have reached the end of the list

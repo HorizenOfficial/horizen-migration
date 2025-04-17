@@ -35,6 +35,7 @@ zend_dump_file_name = sys.argv[1]
 result_file_name = sys.argv[2]
 
 total_balance = 0
+total_balance_not_migrated = 0
 
 with open(zend_dump_file_name, 'r') as zend_dump_file:
 	zend_dump_data_reader = csv.reader(zend_dump_file)
@@ -42,22 +43,36 @@ with open(zend_dump_file_name, 'r') as zend_dump_file:
 	results = {}
 
 	for (zend_address, balance_in_satoshi, _) in zend_dump_data_reader:
-		decoded_address = base58.b58decode_check(zend_address).hex()
-		# Remove prefix
-		decoded_address = "0x" + decoded_address[4:]
-		balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
-		total_balance = total_balance + balance_in_wei
-		if decoded_address in results:
-			print(
-				"Found 2 equal hashes: {0}, balance 1 {1}, balance 2 {2}"
-				.format(decoded_address, results[decoded_address], balance_in_wei ))
-			results[decoded_address] = results[decoded_address] + balance_in_wei
+		if not zend_address.startswith("unknown"):
+			try:
+				decoded_address = base58.b58decode_check(zend_address).hex()
+				# Remove prefix
+				decoded_address = "0x" + decoded_address[4:]
+				balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
+				total_balance = total_balance + balance_in_wei
+				if decoded_address in results:
+					print(
+						"Found 2 equal hashes: {0}, balance 1 {1}, balance 2 {2}"
+						.format(decoded_address, results[decoded_address], balance_in_wei ))
+					results[decoded_address] = results[decoded_address] + balance_in_wei
+				else:
+					results[decoded_address] = balance_in_wei
+			except:
+				print(
+					"Error while processing line with address: {0}, balance {1}. The file is corrupted, exiting "
+					.format(zend_address, balance_in_satoshi))
+				exit(-1)
 		else:
-			results[decoded_address] = balance_in_wei
+			balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
+			total_balance_not_migrated = total_balance_not_migrated + balance_in_wei
+			print(
+				"Found an unknown address: {0}, with balance in wei {1}"
+				.format(zend_address, balance_in_wei))
 
 print("Total balance migrated from Zend: {}".format(total_balance))
+print("Total balance not migrated from Zend for unknown addresses: {}".format(total_balance_not_migrated))
 
 sorted_accounts = collections.OrderedDict(sorted(results.items()))
 
 with open(result_file_name, "w") as jsonFile:
-	json.dump(results, jsonFile, indent=4)
+	json.dump(sorted_accounts, jsonFile, indent=4)

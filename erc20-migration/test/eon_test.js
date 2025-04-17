@@ -3,11 +3,12 @@ const web3 = require("web3");
 const JSONbig = require("json-bigint")({ storeAsString: true });
 const fs = require("fs");
 const path = require("path");
+const utils = require("./utils");
 
 describe("Token and EON Backup contract testing", function () {
 
   var admin;
-  var ZTESTBackupVault;
+  var EONBackupVault;
   var erc20;
   var dumpRecursiveHash;
   var tuples;
@@ -37,16 +38,16 @@ describe("Token and EON Backup contract testing", function () {
 
   it("Deployment of the backup contract", async function () {
     admin = (await ethers.getSigners())[0];
-    var factory = await ethers.getContractFactory("ZTESTBackupVault");    
-    ZTESTBackupVault = await factory.deploy(admin);
-    console.log(`Contract deployed at: ${ZTESTBackupVault.target}`);
-    const receipt = await ZTESTBackupVault.deploymentTransaction().wait(); // Wait for confirmation
-    printReceipt("Deploy of backup contract",receipt);
+    var factory = await ethers.getContractFactory(utils.EON_VAULT_CONTRACT_NAME);    
+    EONBackupVault = await factory.deploy(admin);
+    console.log(`Contract deployed at: ${EONBackupVault.target}`);
+    const receipt = await EONBackupVault.deploymentTransaction().wait(); // Wait for confirmation
+    utils.printReceipt("Deploy of backup contract",receipt);
   });
 
   it("Set cumulative hash checkpoint in the backup contract", async function () {
-    var res = await ZTESTBackupVault.setCumulativeHashCeckpoint(dumpRecursiveHash);    
-    printReceipt("Set  cumulative hash checkpoin in vault", await res.wait());
+    var res = await EONBackupVault.setCumulativeHashCheckpoint(dumpRecursiveHash);    
+    utils.printReceipt("Set cumulative hash checkpoint in vault", await res.wait());
   });
 
   it("Store backup balances in the contract (in batches of "+BATCH_LENGTH+")", async function () {
@@ -58,44 +59,44 @@ describe("Token and EON Backup contract testing", function () {
       calcCumulativeHash = updateCumulativeHash(calcCumulativeHash, key, val);
       if (addressesValues.length == BATCH_LENGTH){
         console.log("Inserting batch: "+batchNumber);
-        var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addressesValues);
-        printReceipt("Batch insert "+batchNumber, await res.wait());
+        var res = await EONBackupVault.batchInsert(calcCumulativeHash, addressesValues);
+        utils.printReceipt("Batch insert "+batchNumber, await res.wait());
         batchNumber++;
         addressesValues = [];
       }
     }
     if (addressesValues.length > 0){
       console.log("Inserting batch: "+batchNumber);
-      var res = await ZTESTBackupVault.batchInsert(calcCumulativeHash, addressesValues);
-      printReceipt("Batch insert "+batchNumber, await res.wait());
+      var res = await EONBackupVault.batchInsert(calcCumulativeHash, addressesValues);
+      utils.printReceipt("Batch insert "+batchNumber, await res.wait());
     }
   });
 
   it("Check recursive hash from the contract matches with the local one", async function () {
-    var cumulativeHashFromContract = await ZTESTBackupVault._cumulativeHash();
+    var cumulativeHashFromContract = await EONBackupVault._cumulativeHash();
     console.log("Hash from the contract: "+cumulativeHashFromContract);
     expect(dumpRecursiveHash).to.equal(cumulativeHashFromContract);
   });  
 
   it("Deployment of the ERC-20 contract", async function () {
-    var factory = await ethers.getContractFactory("ZTEST");
+    var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
     const MOCK_ZEND_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
-    erc20 = await factory.deploy(await ZTESTBackupVault.getAddress(), MOCK_ZEND_VAULT_ADDRESS);
+    erc20 = await factory.deploy("ZTest", "ZTEST", await EONBackupVault.getAddress(), MOCK_ZEND_VAULT_ADDRESS);
     const receipt = await erc20.deploymentTransaction().wait(); // Wait for confirmation
-    printReceipt("Deploy of ERC-20 contract",receipt);
+    utils.printReceipt("Deploy of ERC-20 contract",receipt);
   });
 
   it("Set ERC-20 contract reference in the backup contract", async function () {
-    var res = await ZTESTBackupVault.setERC20(await erc20.getAddress());    
-    printReceipt("Set ERC-20 reference in vault", await res.wait());
+    var res = await EONBackupVault.setERC20(await erc20.getAddress());    
+    utils.printReceipt("Set ERC-20 reference in vault", await res.wait());
   });
 
   it("Call distribute() and check distributed balances", async function () {
     var round = 0;
-    while (await ZTESTBackupVault.moreToDistribute()){
+    while (await EONBackupVault.moreToDistribute()){
       console.log("distribution round: "+round);
-      var res = await ZTESTBackupVault.distribute(); 
-      printReceipt("Distribution round "+round, await res.wait());
+      var res = await EONBackupVault.distribute(); 
+      utils.printReceipt("Distribution round "+round, await res.wait());
       round++; 
     }
      
@@ -106,18 +107,8 @@ describe("Token and EON Backup contract testing", function () {
   });
 
   it("If we have distributed everything, no more distribution can happen", async function () {
-    expect(ZTESTBackupVault.distribute()).to.be.revertedWith("Nothing to distribute");
+    expect(EONBackupVault.distribute()).to.be.revertedWith("Nothing to distribute");
   });
 
-  function printReceipt(name, receipt){
-    console.log(">>>> "+name);
-    const gasUsed = receipt.gasUsed; // Gas units consumed
-    const gasPrice = receipt.gasPrice; // Gas price in wei per unit
-    const totalGasCost = gasUsed * gasPrice; // Total cost in wei
-    console.log(`Tx hash: ${receipt.hash}`);
-    console.log(`Gas Used: ${gasUsed}`);
-    console.log(`Gas Price: ${gasPrice}`);
-    console.log(`Total Gas Cost: ${ethers.formatEther(totalGasCost)} ETH`);
-  }
-  
+
 });

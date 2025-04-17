@@ -34,7 +34,7 @@ library VerificationLibrary {
     function verifyZendSignatureBool(bytes32 messageHash, Signature memory signature, bytes32 pubKeyX, bytes32 pubKeyY) internal pure returns(bool) {
         uint8 v_ethereumFormat;
         if (signature.v == 31 || signature.v==32){
-            //zend signature from compressed pubkey has +4 in the first byte,  but ethereum does not expect this
+            //zend signature from compressed pubkey has +4 in the first byte, but ethereum does not expect this
             v_ethereumFormat = signature.v - 4;
         }else{
             v_ethereumFormat = signature.v;
