@@ -258,7 +258,6 @@ describe("ZEND Claim test", function () {
     let signatures = ["0x"+TEST_MULTISIG_SIGNATURE_HEX_1, "0x"+TEST_MULTISIG_SIGNATURE_HEX_2]; //only two items
     let pubKeys = [TEST1_PUBLICKEY, TEST2_PUBLICKEY, ZERO_PUBLICKEY];
 
-
     await expect(ZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeys))
       .to.be.revertedWithCustomError(ZendBackupVaultMultisig, "InvalidSignatureArrayLength")
   });
