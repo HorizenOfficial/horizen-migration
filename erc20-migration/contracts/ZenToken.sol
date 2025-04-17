@@ -26,8 +26,8 @@ contract ZenToken is ERC20Capped, AccessControl {
 
     modifier canMint() {
         // Check that the calling account has the minter role
-        if (!hasRole(MINTER_ROLE, _msgSender())) {
-            revert CallerNotMinter(_msgSender());
+        if (!hasRole(MINTER_ROLE, msg.sender)) {
+            revert CallerNotMinter(msg.sender);
         }
         _;
     }
