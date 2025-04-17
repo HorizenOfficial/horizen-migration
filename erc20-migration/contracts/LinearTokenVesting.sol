@@ -44,10 +44,17 @@ contract LinearTokenVesting {
         if(periodsPassed == 0) revert NothingToClaim();
 
         uint256 intervalsToClaimNow = _min(intervalsToClaim - intervalsAlreadyClaimed, periodsPassed); 
-        uint256 amountToClaimNow = intervalsToClaimNow * amountForEachClaim;
+        intervalsAlreadyClaimed += intervalsToClaimNow;       
+        uint256 amountToClaimNow;
+        if (intervalsAlreadyClaimed < intervalsToClaim) {
+            amountToClaimNow = intervalsToClaimNow * amountForEachClaim;
+        }
+        else {
+            amountToClaimNow = ERC20(token).balanceOf(address(this));
+        }
 
         emit Claimed(amountToClaimNow, block.timestamp);
-        intervalsAlreadyClaimed += intervalsToClaimNow;
+
         ERC20(token).transfer(beneficiary, amountToClaimNow);
     }
 
