@@ -147,8 +147,7 @@ contract ZendBackupVault is Ownable {
     
     /// @notice Claim a P2SH balance.
     ///         destAddress is the receiver of the funds
-    ///         hexSignatures is the array of the signatures of the claiming message. Must be generated in a compressed format to claim a zend address
-    ///         If the signature is not present for that key, signature MUST be 0
+    ///         hexSignatures is the array of the signatures of the claiming message. If a signature is not present, signature MUST be 0
 
     ///         IMPORTANT: the array should have as length the number of public keys in the script. The signature in the "i" position should be the signature for the "i"
     ///         pub key in the order it appears in the script. If the signature is not present for that key, it should be empty.
@@ -157,7 +156,7 @@ contract ZendBackupVault is Ownable {
     ///         script is the script to claim, from which pubKeys will be extracted
     ///         pubKeysX and pubKeysY are the first 32 bytes and second 32 bytes of the signing keys for each one in the script (we use always the uncompressed format here)
     ///         If a public key is not needed (because signature is zero) its value can be zero; even if not needed, if it is present, it should be the same used for the script
-    ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the zenAddress and destAddress in lowercase string hex format)
+    ///         (Claiming message is predefined and composed by the string in the message_prefix variable concatenated with the zenAddress and destAddress in lowercase string hex format)
     ///         (zenAddress is the string representation with 0x prefix )
     function claimP2SH(address destAddress, bytes[] calldata hexSignatures, bytes memory script, PubKey[] calldata pubKeys) public canClaim(destAddress) {
         if(hexSignatures.length != pubKeys.length) revert InvalidSignatureArrayLength(); //check method doc
