@@ -50,6 +50,7 @@ contract ZTESTZendBackupVault is Ownable {
     error InvalidPublicKeysArraysLength();
     error InvalidScriptLength();
     error InvalidPublicKeySize(uint256 size);
+    error UnexpectedZeroPublicKey(PubKey);
     error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
 
@@ -149,7 +150,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         
     ///         script is the script to claim, from which pubKeys will be extracted
     ///         pubKeysX and pubKeysY are the first 32 bytes and second 32 bytes of the signing keys for each one in the script (we use always the uncompressed format here)
-    ///         If the signature is not present for that key, the pub keys x and y should be bytes32(0)
+    ///         If the signature is not present for that key, the pub keys x and y MUST be bytes32(0)
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the zenAddress and destAddress in lowercase string hex format)
     ///         (zenAddress is the string representation with 0x prefix )
     function claimP2SH(address destAddress, bytes[] calldata hexSignatures, bytes memory script, PubKey[] calldata pubKeys) public canClaim(destAddress) {
@@ -171,11 +172,14 @@ contract ZTESTZendBackupVault is Ownable {
         uint256 validSignatures;
         uint256 i;
         while(i != hexSignatures.length && validSignatures < minSignatures) {
-            if((pubKeys[i].x != bytes32(0) || pubKeys[i].y != 0) && hexSignatures[i].length != 0) {
-                VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
-                //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
-                if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeys[i].x, pubKeys[i].y)) {
-                    unchecked { ++validSignatures; }
+            if(hexSignatures[i].length != 0) { // skip otherwise
+                if(pubKeys[i].x == bytes32(0) || pubKeys[i].y == 0) revert UnexpectedZeroPublicKey(pubKeys[i]);
+                else {
+                    VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
+                    //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
+                    if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeys[i].x, pubKeys[i].y)) {
+                        unchecked { ++validSignatures; }
+                    }
                 }
             }
             unchecked { ++i; }
@@ -216,23 +220,25 @@ contract ZTESTZendBackupVault is Ownable {
             if(pubKeys[i].x != 0 && pubKeys[i].x != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeys[i].x);
 
             //second part
-            if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH && pubKeys[i].y != 0) { //uncompressed case
-                bytes32 secondPart;
-                uint256 secondPartStart = pos + 33;
-                assembly {
-                    let resultPtr := mload(0x40)
-                    let sourcePtr := add(script, 0x20)
-                    let offset := add(sourcePtr, secondPartStart)
+            if(pubKeys[i].y != 0) { //skip check if y is 0 
+                if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) { //uncompressed case
+                    bytes32 secondPart;
+                    uint256 secondPartStart = pos + 33;
+                    assembly {
+                        let resultPtr := mload(0x40)
+                        let sourcePtr := add(script, 0x20)
+                        let offset := add(sourcePtr, secondPartStart)
 
-                    mstore(resultPtr, mload(offset))
-                    secondPart := mload(resultPtr)
+                        mstore(resultPtr, mload(offset))
+                        secondPart := mload(resultPtr)
+                    }
+                    if(pubKeys[i].y != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeys[i].y);
                 }
-                if(pubKeys[i].y != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeys[i].y);
-            }
-            else { //in compressed case, we just check sign
-                uint256 xSign = uint256(pubKeys[i].x)%2;
-                uint256 ySign = uint256(pubKeys[i].y)%2;
-                if(xSign != ySign) revert InvalidPublicKey(i, 1, bytes32(xSign), bytes32(ySign));
+                else { //in compressed case, we just check sign
+                    uint256 xSign = uint256(pubKeys[i].x)%2;
+                    uint256 ySign = uint256(pubKeys[i].y)%2;
+                    if(xSign != ySign) revert InvalidPublicKey(i, 1, bytes32(xSign), bytes32(ySign));
+                }
             }
 
             pos += nextPubKeySize;
