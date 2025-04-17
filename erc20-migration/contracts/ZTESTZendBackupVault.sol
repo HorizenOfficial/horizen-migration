@@ -81,7 +81,7 @@ contract ZTESTZendBackupVault is Ownable {
     /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
     ///         The zendAddresses in bs58 decoded format
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly)
-    function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] memory addressValues) public onlyOwner {
+    function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] calldata addressValues) public onlyOwner {
         if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
@@ -141,7 +141,7 @@ contract ZTESTZendBackupVault is Ownable {
     
     /// @notice Claim a P2SH balance.
     ///         destAddress is the receiver of the funds
-    ///         hexSignatures is the array of the signatures of the claiming message. Must be generated in a compressed format if the public keys in the script are in compressed format, or uncompressed otherwise.
+    ///         hexSignatures is the array of the signatures of the claiming message. Must be generated in a compressed format to claim a zend address
     ///
     ///         IMPORTANT: the array should have as length the number of public keys in the script. The signature in the "i" position should be the signature for the "i"
     ///         pub key in the order it appears in the script. If the signature is not present for that key, it should be empty.
@@ -152,7 +152,7 @@ contract ZTESTZendBackupVault is Ownable {
     ///         If the signature is not present for that key, the pub keys x and y should be bytes32(0)
     ///         (Claiming message is predefined and composed by the string 'ZENCLAIM' concatenated with the zenAddress and destAddress in lowercase string hex format)
     ///         (zenAddress is the string representation with 0x prefix )
-    function claimP2SH(address destAddress, bytes[] memory hexSignatures, bytes memory script, PubKey[] calldata pubKeys) public canClaim(destAddress) {
+    function claimP2SH(address destAddress, bytes[] calldata hexSignatures, bytes memory script, PubKey[] calldata pubKeys) public canClaim(destAddress) {
         if(hexSignatures.length != pubKeys.length) revert InvalidSignatureArrayLength(); //check method doc
 
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
@@ -171,7 +171,7 @@ contract ZTESTZendBackupVault is Ownable {
         uint256 validSignatures;
         uint256 i;
         while(i != hexSignatures.length && validSignatures < minSignatures) {
-            if((pubKeys[i].x != bytes32(0) || pubKeys[i].y == 0) && hexSignatures[i].length != 0) {
+            if((pubKeys[i].x != bytes32(0) || pubKeys[i].y != 0) && hexSignatures[i].length != 0) {
                 VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
                 //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
                 if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeys[i].x, pubKeys[i].y)) {
@@ -229,7 +229,11 @@ contract ZTESTZendBackupVault is Ownable {
                 }
                 if(pubKeys[i].y != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeys[i].y);
             }
-            //in compressed case, we just check first part
+            else { //in compressed case, we just check sign
+                uint256 xSign = uint256(pubKeys[i].x)%2;
+                uint256 ySign = uint256(pubKeys[i].y)%2;
+                if(xSign != ySign) revert InvalidPublicKey(i, 1, bytes32(xSign), bytes32(ySign));
+            }
 
             pos += nextPubKeySize;
             unchecked { ++i; }
