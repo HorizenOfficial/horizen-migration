@@ -1,9 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
-const { hrtime } = require("process");
-const { start } = require("repl");
-const utils = require("./utils");
 
 describe("Vesting test", function () {
 
@@ -16,25 +13,26 @@ describe("Vesting test", function () {
   let startTimestamp;
 
   beforeEach(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(3);
-    beneficiary = (await ethers.getSigners())[2].address;
-    const TOKEN_NAME = "ZTest";
-    const TOKEN_SYMBOL = "ZTEST";
-    //deploy erc20
-    let factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
-    const MOCK_EON_VAULT_ADDRESS = (await ethers.getSigners())[0];
-    const MOCK_ZEND_VAULT_ADDRESS = (await ethers.getSigners())[1];
-    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, MOCK_ZEND_VAULT_ADDRESS, MOCK_EON_VAULT_ADDRESS, beneficiary);
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(2);
+    var admin = (await ethers.getSigners())[0];
+    beneficiary = (await ethers.getSigners())[1].address;
+
+    //deploy erc20 mock
+    let ERC20Mock = await ethers.getContractFactory("ERC20Mock"); 
+    erc20 = await ERC20Mock.deploy();    
     await erc20.deploymentTransaction().wait();
 
-    //deploy vesting
+    //deploy vesting contract
     startTimestamp = await time.latest() + 10;
     factory = await ethers.getContractFactory("LinearTokenVesting");
-    vesting = await factory.deploy(await erc20.getAddress(), beneficiary, AMOUNT_EACH_CLAIM, startTimestamp, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    vesting = await factory.deploy(admin, beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
 
-    //mint
-    await erc20.mint(await vesting.getAddress(), AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM);
+    //set ERC-20
+    await vesting.setERC20(await erc20.getAddress());
+
+    //mock start vesting
+    await erc20.mockStartVesting(vesting.getAddress(), AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM);
   });
 
   //helpers functions

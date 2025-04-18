@@ -2,40 +2,52 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract LinearTokenVesting {
+contract LinearTokenVesting  is Ownable {
 
-    address immutable token;
+    ERC20 public token;
     address immutable beneficiary;
-    uint256 immutable amountForEachClaim;
-    uint256 immutable startTimestamp;
+    uint256 amountForEachClaim;
+    uint256 startTimestamp;
     uint256 immutable timeBetweenClaims; 
     uint256 immutable intervalsToClaim;
     uint256 intervalsAlreadyClaimed;
-
     event Claimed(uint256 claimAmount, uint256 timestamp);
 
     error AddressParameterCantBeZero();
+    error AddressNotValid();
     error TokenAndBeneficiaryCantBeTheSame();
     error AmountCantBeZero();
     error InvalidTimes();
     error NothingToClaim();
     error ClaimCompleted();
+    error UnauthorizedOperation();
 
-    constructor(address _token, address _beneficiary, uint256 _amountForEachClaim, uint256 _startTimestamp, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) {
-        if(_token == address(0) || _beneficiary == address(0)) revert AddressParameterCantBeZero();
-        if(_token == _beneficiary) revert TokenAndBeneficiaryCantBeTheSame();
-        if(_timeBetweenClaims == 0 || _startTimestamp < block.timestamp) revert InvalidTimes();
-        if(_amountForEachClaim == 0) revert AmountCantBeZero();
-        
-        token = _token;
+    constructor(address _admin, address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(_admin){
+        if(_admin == address(0) || _beneficiary == address(0)) revert AddressParameterCantBeZero();
+        if(_timeBetweenClaims == 0) revert InvalidTimes();       
         beneficiary = _beneficiary;
-        amountForEachClaim = _amountForEachClaim;
         timeBetweenClaims = _timeBetweenClaims;
         intervalsToClaim = _intervalsToClaim;
-
-        startTimestamp = _startTimestamp;
     }
+
+    /// @notice Set official ZEN ERC-20 smart contract that will be used for initial trasfer and start vesting
+    function setERC20(address addr) public onlyOwner {
+        if (address(token) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
+        if(addr == address(0)) revert AddressNotValid();
+        if(addr == beneficiary) revert TokenAndBeneficiaryCantBeTheSame();
+        token = ERC20(addr);
+    }
+
+    function startVesting() public{
+        if (msg.sender != address(token)) revert UnauthorizedOperation(); 
+        if (amountForEachClaim != 0 || startTimestamp != 0) revert UnauthorizedOperation(); //already called
+        uint256 totalToVest = token.balanceOf(address(this));
+        if (totalToVest == 0) revert AmountCantBeZero();
+        amountForEachClaim = totalToVest / intervalsToClaim;
+        startTimestamp = block.timestamp;
+    } 
 
     function claim() public {
         if(intervalsAlreadyClaimed == intervalsToClaim) revert ClaimCompleted();
@@ -50,7 +62,7 @@ contract LinearTokenVesting {
             amountToClaimNow = intervalsToClaimNow * amountForEachClaim;
         }
         else {
-            amountToClaimNow = ERC20(token).balanceOf(address(this));
+            amountToClaimNow = token.balanceOf(address(this));
         }
 
         emit Claimed(amountToClaimNow, block.timestamp);
