@@ -53,7 +53,7 @@ describe("Vesting test", function () {
 
   async function _setTimestampAndClaimFails(claimTimestamp, errorName) {
     await time.setNextBlockTimestamp(claimTimestamp);
-    expect(vesting.claim()).to.be.revertedWithCustomError(vesting, errorName);
+    await expect(vesting.claim()).to.be.revertedWithCustomError(vesting, errorName);
   }
 
   // tests

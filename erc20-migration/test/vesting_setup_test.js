@@ -41,8 +41,6 @@ describe("Vesting setup test", function () {
     await time.setNextBlockTimestamp(claimTimestamp);
     await expect(vesting.claim()).to.be.revertedWithCustomError(vesting, errorName);
   }
-  
-
 
   // tests
   it("Deployment of vesting contract", async function () {
