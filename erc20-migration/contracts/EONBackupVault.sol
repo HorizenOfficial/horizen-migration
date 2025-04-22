@@ -92,7 +92,7 @@ contract EONBackupVault is Ownable {
 
         uint256 count = 0;
         uint256 _nextRewardIndex = nextRewardIndex;
-        while (_nextRewardIndex < addressList.length && count < 500) {
+        while (_nextRewardIndex != addressList.length && count != 500) {
             address addr = addressList[_nextRewardIndex];      
             uint256 amount = balances[addr];
             if (amount > 0) {                
@@ -100,8 +100,8 @@ contract EONBackupVault is Ownable {
                 zenToken.mint(addr, amount);
             }
             unchecked { 
-                _nextRewardIndex++;
-                count++;
+                ++_nextRewardIndex;
+                ++count;
             }
         }
         nextRewardIndex = _nextRewardIndex;
