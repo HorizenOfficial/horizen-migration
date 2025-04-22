@@ -130,8 +130,9 @@ describe("ZEND Claim test", function () {
 
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
-    const MOCK_EON_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
-    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, MOCK_EON_VAULT_ADDRESS, await ZendBackupVault.getAddress(), utils.HORIZEN_FOUNDATION);
+    const MOCK_EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";
+    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, 
+      MOCK_EMPTY_ADDRESS, await ZendBackupVault.getAddress(), utils.HORIZEN_FOUNDATION, MOCK_EMPTY_ADDRESS, utils.HORIZEN_DAO, MOCK_EMPTY_ADDRESS);
   });
 
   it("Set ERC-20 contract reference in the backup contract", async function () {
@@ -229,9 +230,10 @@ describe("ZEND Claim test", function () {
     var ZendBackupVaultMultisig = await factory.deploy(admin, BASE_MESSAGE_PREFIX);
 
     var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
-    const MOCK_EON_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
-    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, MOCK_EON_VAULT_ADDRESS, await ZendBackupVaultMultisig.getAddress(), utils.HORIZEN_FOUNDATION);
-console.log(await ZendBackupVaultMultisig.getAddress());
+    const MOCK_EMPTY_ADDRESS = "0x0000000000000000000000000000000000000000";
+    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, 
+      MOCK_EMPTY_ADDRESS, await ZendBackupVaultMultisig.getAddress(), utils.HORIZEN_FOUNDATION,  MOCK_EMPTY_ADDRESS, utils.HORIZEN_DAO, MOCK_EMPTY_ADDRESS);
+    console.log(await ZendBackupVaultMultisig.getAddress());
     await ZendBackupVaultMultisig.setERC20(await erc20.getAddress());    
   
     if(shouldInsertMultisigBalance) {
