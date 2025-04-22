@@ -110,8 +110,7 @@ describe("ZEND Claim test", function () {
     admin = (await ethers.getSigners())[0];
     var factory = await ethers.getContractFactory(utils.ZEND_VAULT_CONTRACT_NAME);
     ZendBackupVault = await factory.deploy(admin, BASE_MESSAGE_PREFIX);
-    const receipt = await ZendBackupVault.deploymentTransaction().wait(); // Wait for confirmation
-
+  
     expect(await ZendBackupVault.message_prefix()).to.be.equal("");
   });
 

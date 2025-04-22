@@ -10,6 +10,7 @@ describe("Vesting test", function () {
   let TIME_BETWEEN_INTERVALS = 1000;
   let INTERVALS_TO_CLAIM = 20;
   let AMOUNT_EACH_CLAIM = 10;
+  let VESTING_AMOUNT = AMOUNT_EACH_CLAIM * INTERVALS_TO_CLAIM + 1;
   let startTimestamp;
 
   beforeEach(async function () {
@@ -32,7 +33,7 @@ describe("Vesting test", function () {
     await vesting.setERC20(await erc20.getAddress());
 
     //mock start vesting
-    await erc20.mockStartVesting(vesting.getAddress(), AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM);
+    await erc20.mockStartVesting(vesting.getAddress(), VESTING_AMOUNT);
   });
 
   //helpers functions
@@ -42,7 +43,7 @@ describe("Vesting test", function () {
     
     //check contract balance
     let contractBalance = await erc20.balanceOf(await vesting.getAddress());
-    expect(contractBalance).to.be.equal(AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM - expectedBalance);
+    expect(contractBalance).to.be.equal(VESTING_AMOUNT- expectedBalance);
   }
 
   async function _setTimestampAndClaim(claimTimestamp) {
@@ -69,7 +70,7 @@ describe("Vesting test", function () {
 
   it("claim success for all periods, then fails", async function () {
     await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * INTERVALS_TO_CLAIM);
-    await _assertBalance(AMOUNT_EACH_CLAIM * INTERVALS_TO_CLAIM);
+    await _assertBalance(VESTING_AMOUNT);
     await _setTimestampAndClaimFails(startTimestamp + TIME_BETWEEN_INTERVALS * (INTERVALS_TO_CLAIM+1), "ClaimCompleted");
   });
 
@@ -77,7 +78,7 @@ describe("Vesting test", function () {
     await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS*2); //claim two
     await _assertBalance(AMOUNT_EACH_CLAIM*2);
     await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * (INTERVALS_TO_CLAIM+100)); //claim after a long time
-    await _assertBalance(AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM);
+    await _assertBalance(VESTING_AMOUNT);
   });
 
   it("claim after one period, then claim success if multiple periods has passed", async function () {

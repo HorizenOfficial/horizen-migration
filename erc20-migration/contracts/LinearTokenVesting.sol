@@ -7,12 +7,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract LinearTokenVesting  is Ownable {
 
     ERC20 public token;
-    address immutable beneficiary;
-    uint256 amountForEachClaim;
-    uint256 startTimestamp;
-    uint256 immutable timeBetweenClaims; 
-    uint256 immutable intervalsToClaim;
-    uint256 intervalsAlreadyClaimed;
+    address public immutable beneficiary;
+    uint256 public amountForEachClaim;
+    uint256 public startTimestamp;
+    uint256 public immutable timeBetweenClaims; 
+    uint256 public immutable intervalsToClaim;
+    uint256 public intervalsAlreadyClaimed;
     event Claimed(uint256 claimAmount, uint256 timestamp);
 
     error AddressParameterCantBeZero();
@@ -23,6 +23,8 @@ contract LinearTokenVesting  is Ownable {
     error NothingToClaim();
     error ClaimCompleted();
     error UnauthorizedOperation();
+    error ERC20NotSet();
+    error VestingNotStartedYet();
 
     constructor(address _admin, address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(_admin){
         if(_admin == address(0) || _beneficiary == address(0)) revert AddressParameterCantBeZero();
@@ -32,7 +34,7 @@ contract LinearTokenVesting  is Ownable {
         intervalsToClaim = _intervalsToClaim;
     }
 
-    /// @notice Set official ZEN ERC-20 smart contract that will be used for initial trasfer and start vesting
+    /// @notice Set official ZEN ERC-20 smart contract that will be used for initial transfer and start vesting
     function setERC20(address addr) public onlyOwner {
         if (address(token) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
@@ -40,7 +42,7 @@ contract LinearTokenVesting  is Ownable {
         token = ERC20(addr);
     }
 
-    function startVesting() public{
+    function startVesting() public {
         if (msg.sender != address(token)) revert UnauthorizedOperation(); 
         if (amountForEachClaim != 0 || startTimestamp != 0) revert UnauthorizedOperation(); //already called
         uint256 totalToVest = token.balanceOf(address(this));
@@ -50,6 +52,8 @@ contract LinearTokenVesting  is Ownable {
     } 
 
     function claim() public {
+        if (address(token) == address(0)) revert ERC20NotSet();
+        if (startTimestamp == 0) revert VestingNotStartedYet();
         if(intervalsAlreadyClaimed == intervalsToClaim) revert ClaimCompleted();
 
         uint256 periodsPassed = (block.timestamp - (startTimestamp + timeBetweenClaims * intervalsAlreadyClaimed)) / timeBetweenClaims;
@@ -67,7 +71,7 @@ contract LinearTokenVesting  is Ownable {
 
         emit Claimed(amountToClaimNow, block.timestamp);
 
-        ERC20(token).transfer(beneficiary, amountToClaimNow);
+        token.transfer(beneficiary, amountToClaimNow);
     }
 
     function _min(uint256 a, uint256 b) internal pure returns(uint256) {
