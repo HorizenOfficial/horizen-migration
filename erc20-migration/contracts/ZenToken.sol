@@ -4,28 +4,26 @@ pragma solidity ^0.8.0;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
+import "./LinearTokenVesting.sol";
 
 /// @title ZEN official ERC-20 smart contract
 /// @notice Minting role is granted in the constructor to the Vault Contracts, responsible for
-///         restoring EON and Zend balances. 
+///         restoring EON and Zend balances.
 
 contract ZenToken is ERC20Capped, AccessControl {
-
     // Create a new role identifier for the minter role
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     uint256 internal constant TOTAL_ZEN_SUPPLY = 21_000_000;
     uint256 internal constant TOKEN_SIZE = 10 ** 18;
 
-    address public horizenFoundation;
     address public horizenFoundationVested;
-    address public horizenDao;
     address public horizenDaoVested;
 
     uint8 notificationCounter;
 
+    error AddressParameterCantBeZero();
     error CallerNotMinter(address caller);
-
 
     modifier canMint() {
         // Check that the calling account has the minter role
@@ -35,33 +33,33 @@ contract ZenToken is ERC20Capped, AccessControl {
         _;
     }
 
-
     /// @notice Smart contract constructor
     /// @param tokenName Name of the token
     /// @param tokenSymbol Ticker of the token
     /// @param _eonBackupContract Address of EON Vault contract
     /// @param _zendBackupContract Address of ZEND Vault contract
-    /// @param _horizenFoundation Address who will receive the remaining portion of Zen reserved to Foundation (immediately available)
-    /// @param _horizenFoundationVested Address who will receive the remaining portion of Zen to the Foundation (with locking period)
-    /// @param _horizenDao Address who will receive the remaining portion of Zen reserved to the DAO (immediately available)
-    /// @param _horizenDaoVested Address who will receive the remaining portion  of Zen reserved to the DAO (with locking period)
+    /// @param _horizenFoundationVested Address who will receive the remaining portion of Zen reserved to the Foundation (with locking period)
+    /// @param _horizenDaoVested Address who will receive the remaining portion of Zen reserved to the DAO (with locking period)
     constructor(
         string memory tokenName,
         string memory tokenSymbol,
         address _eonBackupContract,
-        address _zendBackupContract, 
-        address _horizenFoundation,
+        address _zendBackupContract,
         address _horizenFoundationVested,
-        address _horizenDao,
         address _horizenDaoVested
     ) ERC20(tokenName, tokenSymbol) ERC20Capped(TOTAL_ZEN_SUPPLY * TOKEN_SIZE) {
-
+        if (_eonBackupContract == address(0))
+            revert AddressParameterCantBeZero();
+        if (_zendBackupContract == address(0))
+            revert AddressParameterCantBeZero();
+        if (_horizenFoundationVested == address(0))
+            revert AddressParameterCantBeZero();
+        if (_horizenDaoVested == address(0))
+            revert AddressParameterCantBeZero();
         // Grant the minter role to a specified account
         _grantRole(MINTER_ROLE, _eonBackupContract);
         _grantRole(MINTER_ROLE, _zendBackupContract);
-        horizenFoundation = _horizenFoundation;
         horizenFoundationVested = _horizenFoundationVested;
-        horizenDao = _horizenDao;  
         horizenDaoVested = _horizenDaoVested;
     }
 
@@ -71,12 +69,32 @@ contract ZenToken is ERC20Capped, AccessControl {
 
     function notifyMintingDone() public canMint {
         _revokeRole(MINTER_ROLE, msg.sender);
-        unchecked {++notificationCounter;}
-        if (notificationCounter == 2){
-            _mint(horizenFoundation, cap() - totalSupply());
+        unchecked {
+            ++notificationCounter;
+        }
+        if (notificationCounter == 2) {
+            uint256 remainingSupply = cap() - totalSupply();
+            //Horizen Foundation is eligible of 40% of the remaining supply. The rest is for the DAO
+            uint256 foundationSupply = (remainingSupply * 4) / 10;
+            uint256 daoSupply = remainingSupply - foundationSupply;
+            uint256 foundationInitialSupply = (foundationSupply * 25) / 100;
+            uint256 daoInitialSupply = (daoSupply * 25) / 100;
+            _mint(
+                LinearTokenVesting(horizenFoundationVested).beneficiary(),
+                foundationInitialSupply
+            );
+            _mint(
+                horizenFoundationVested,
+                foundationSupply - foundationInitialSupply
+            );
+            _mint(
+                LinearTokenVesting(horizenDaoVested).beneficiary(),
+                daoInitialSupply
+            );
+            _mint(horizenDaoVested, daoSupply - daoInitialSupply);
+
+            LinearTokenVesting(horizenFoundationVested).startVesting();
+            LinearTokenVesting(horizenDaoVested).startVesting();
         }
     }
-
-
 }
-

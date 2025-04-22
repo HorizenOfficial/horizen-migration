@@ -46,8 +46,14 @@ describe("Migration Contracts Factory testing", function () {
     expect(zendVault).to.be.not.equal(utils.NULL_ADDRESS);
     const horizenFoundationVestingContract = await ZenMigrationFactory.horizenFoundationVestingContract();
     expect(horizenFoundationVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
+    let vestingFoundation = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenFoundationVestingContract);
+    expect(await vestingFoundation.beneficiary()).to.be.equal(utils.HORIZEN_FOUNDATION);
+
     const horizenDaoVestingContract = await ZenMigrationFactory.horizenDaoVestingContract();
     expect(horizenDaoVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
+
+    let vestingDAO = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenDaoVestingContract);
+    expect(await vestingDAO.beneficiary()).to.be.equal(utils.HORIZEN_DAO);
 
     await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated')
     .withArgs(token, eonVault, zendVault, horizenFoundationVestingContract, horizenDaoVestingContract);
@@ -57,7 +63,7 @@ describe("Migration Contracts Factory testing", function () {
   it("Check token contract", async function () {
     let token = await ZenMigrationFactory.token();
     let ZENToken = await hre.ethers.getContractAt(utils.ZEN_TOKEN_CONTRACT_NAME, token);
-    expect(await ZENToken.horizenFoundation()).to.be.equal(utils.HORIZEN_FOUNDATION);
+
     expect(await ZENToken.name()).to.be.equal(tokenName);
     expect(await ZENToken.symbol()).to.be.equal(tokenSymbol);
 

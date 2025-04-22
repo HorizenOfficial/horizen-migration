@@ -13,12 +13,10 @@ describe("Vesting setup test", function () {
   let AMOUNT_EACH_CLAIM = 10;
   let VESTING_AMOUNT = AMOUNT_EACH_CLAIM*INTERVALS_TO_CLAIM + 1;
   let startTimestamp;
-  let admin;
-
+ 
   beforeEach(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(2);
-    admin = (await ethers.getSigners())[0];
-    beneficiary = (await ethers.getSigners())[1].address;
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(1);
+    beneficiary = (await ethers.getSigners())[0].address;
 
   });
 
@@ -52,8 +50,8 @@ describe("Vesting setup test", function () {
 
     //deploy vesting contract
     startTimestamp = await time.latest() + 10;
-    factory = await ethers.getContractFactory("LinearTokenVesting");
-    vesting = await factory.deploy(admin, beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
+    vesting = await factory.deploy(beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
     expect(await vesting.token()).to.be.equal(utils.NULL_ADDRESS);
     expect(await vesting.beneficiary()).to.be.equal(beneficiary);

@@ -17,21 +17,32 @@ describe("ZEN Token contract testing", function () {
 
 
   const MAX_ZEN_SUPPLY = BigInt(21_000_000n) * BigInt(10 ** 18);
+  let TIME_BETWEEN_INTERVALS = 1000;
+  let INTERVALS_TO_CLAIM = 20;
 
   before(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(5);
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(4);
     minter_1 = (await ethers.getSigners())[0];
     minter_2 = (await ethers.getSigners())[1];
     horizenFoundation = (await ethers.getSigners())[2];
-    horizenFoundationVested = (await ethers.getSigners())[3]; //for the purpose of this test, we will just use a EOA instead of the vesting contract
-    horizenDao = (await ethers.getSigners())[4];
-    horizenDaoVested = (await ethers.getSigners())[5];  //for the purpose of this test, we will just use a EOA instead of the vesting contract
+    horizenDao = (await ethers.getSigners())[3];
+
   });
 
 
   it("Deployment of the ERC-20 contract", async function () {
-    let factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
-    zenToken = await factory.deploy("ZTest", "ZTEST", minter_1, minter_2, horizenFoundation, horizenFoundationVested, horizenDao, horizenDaoVested);
+
+
+//Deploynt vesting contracts
+    let factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
+    horizenFoundationVested = await factory.deploy(horizenFoundation, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    await horizenFoundationVested.deploymentTransaction().wait();
+
+    horizenDaoVested = await factory.deploy(horizenDao, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    await horizenDaoVested.deploymentTransaction().wait();
+
+    factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
+    zenToken = await factory.deploy("ZTest", "ZTEST", minter_1, minter_2, horizenFoundationVested,  horizenDaoVested);
     let receipt = await zenToken.deploymentTransaction().wait(); // Wait for confirmation
 
     expect(await zenToken.cap(), "Wrong max supply").to.equal(MAX_ZEN_SUPPLY);
@@ -56,6 +67,10 @@ describe("ZEN Token contract testing", function () {
   });
 
   it("Notify end of minting", async function () {
+    await horizenFoundationVested.setERC20(zenToken);
+
+    await horizenDaoVested.setERC20(zenToken);
+
     let initialSupply = await zenToken.totalSupply();
 
     // check that non minter accounts cannot call notifyMintingDone
@@ -77,9 +92,12 @@ describe("ZEN Token contract testing", function () {
     await expect(zenToken.notifyMintingDone(), "minter_1 could call again notifyMintingDone").to.be.revertedWithCustomError(zenToken, "CallerNotMinter"); 
 
     // minter_2 calls notifyMintingDone
-    // Verify horizenFoundation balance before calling notifyMintingDone
+    // Verify horizen addresses balance before calling notifyMintingDone
 
     expect(await zenToken.balanceOf(horizenFoundation)).to.equal(0);
+    expect(await zenToken.balanceOf(horizenDao)).to.equal(0);
+    expect(await zenToken.balanceOf(horizenFoundationVested)).to.equal(0);
+    expect(await zenToken.balanceOf(horizenDaoVested)).to.equal(0);
 
     res = await zenToken.connect(minter_2).notifyMintingDone();
     receipt = await res.wait();
@@ -88,15 +106,25 @@ describe("ZEN Token contract testing", function () {
 
     // Check that after both minters notified the end of minting, the remaining supply was assigned to horizenFoundation
     expect(await zenToken.totalSupply()).to.equal(MAX_ZEN_SUPPLY);
-    expect(await zenToken.balanceOf(horizenFoundation)).to.equal(MAX_ZEN_SUPPLY - BigInt(initialSupply));
+    let remainingSupply = MAX_ZEN_SUPPLY - BigInt(initialSupply);
+    let expectedTotalFoundationSupply = remainingSupply * BigInt(40) / BigInt(100);
+    let expectedInitialFoundationSupply = expectedTotalFoundationSupply * BigInt(25) / BigInt(100);
+    let expectedVestedFoundationSupply = expectedTotalFoundationSupply - expectedInitialFoundationSupply;
+    let expectedTotalDaoSupply = remainingSupply - expectedTotalFoundationSupply;
+    let expectedInitialDaoSupply = expectedTotalDaoSupply * BigInt(25) / BigInt(100);
+    let expectedVestedFDaoSupply = expectedTotalDaoSupply - expectedInitialDaoSupply;
+    expect(await zenToken.balanceOf(horizenFoundation)).to.equal(expectedInitialFoundationSupply);
+    expect(await zenToken.balanceOf(horizenFoundationVested)).to.equal(expectedVestedFoundationSupply);
+    expect(await zenToken.balanceOf(horizenDao)).to.equal(expectedInitialDaoSupply);
+    expect(await zenToken.balanceOf(horizenDaoVested)).to.equal(expectedVestedFDaoSupply);
 
-    
+    let expectedFoundationSingleClaimAmount = expectedVestedFoundationSupply / BigInt(INTERVALS_TO_CLAIM);
+    expect(await horizenFoundationVested.amountForEachClaim()).to.equal(expectedFoundationSingleClaimAmount);
+
+    let expectedDaoSingleClaimAmount = expectedVestedFDaoSupply / BigInt(INTERVALS_TO_CLAIM);
+    expect(await horizenDaoVested.amountForEachClaim()).to.equal(expectedDaoSingleClaimAmount);
+   
   });
-
-
-
-
-
 
 
 });

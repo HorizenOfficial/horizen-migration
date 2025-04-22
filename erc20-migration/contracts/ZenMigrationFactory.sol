@@ -52,17 +52,15 @@ contract ZenMigrationFactory is Ownable {
         eonVault = new EONBackupVault(address(this));
         zendVault = new ZendBackupVault(address(this), base_claim_message);
 
-        horizenFoundationVestingContract = new LinearTokenVesting(address(this), horizenFoundation, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
-        horizenDaoVestingContract = new LinearTokenVesting(address(this), horizenDao, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
+        horizenFoundationVestingContract = new LinearTokenVesting(horizenFoundation, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
+        horizenDaoVestingContract = new LinearTokenVesting(horizenDao, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
 
         token = new ZenToken(
             tokenName,
             tokenSymbol,
             address(eonVault),
             address(zendVault),
-            horizenFoundation,
             address(horizenFoundationVestingContract),
-            horizenDao,
             address(horizenDaoVestingContract)
         );
 

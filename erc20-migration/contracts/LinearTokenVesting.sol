@@ -26,8 +26,8 @@ contract LinearTokenVesting  is Ownable {
     error ERC20NotSet();
     error VestingNotStartedYet();
 
-    constructor(address _admin, address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(_admin){
-        if(_admin == address(0) || _beneficiary == address(0)) revert AddressParameterCantBeZero();
+    constructor(address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(msg.sender){
+        if(_beneficiary == address(0)) revert AddressParameterCantBeZero();
         if(_timeBetweenClaims == 0) revert InvalidTimes();       
         beneficiary = _beneficiary;
         timeBetweenClaims = _timeBetweenClaims;
