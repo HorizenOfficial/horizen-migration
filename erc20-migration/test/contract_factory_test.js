@@ -34,7 +34,8 @@ describe("Migration Contracts Factory testing", function () {
 
   it("Create migration contracts", async function () {
 
-    let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, utils.HORIZEN_FOUNDATION);
+    let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, 
+        utils.HORIZEN_FOUNDATION, utils.HORIZEN_DAO);
     const token = await ZenMigrationFactory.token()
 
 
@@ -43,9 +44,13 @@ describe("Migration Contracts Factory testing", function () {
     expect(eonVault).to.be.not.equal(utils.NULL_ADDRESS);
     const zendVault = await ZenMigrationFactory.zendVault();
     expect(zendVault).to.be.not.equal(utils.NULL_ADDRESS);
+    const horizenFoundationVestingContract = await ZenMigrationFactory.horizenFoundationVestingContract();
+    expect(horizenFoundationVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
+    const horizenDaoVestingContract = await ZenMigrationFactory.horizenDaoVestingContract();
+    expect(horizenDaoVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
 
-    await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated').withArgs(token, eonVault, zendVault);
-
+    await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated')
+    .withArgs(token, eonVault, zendVault, horizenFoundationVestingContract, horizenDaoVestingContract);
   });
 
 
@@ -71,7 +76,9 @@ describe("Migration Contracts Factory testing", function () {
     let tokenName = "FOO"
     let tokenSymbol = "FOO"
 
-    await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, utils.HORIZEN_FOUNDATION)).to.be.revertedWithCustomError(ZenMigrationFactory, "TokenAlreadyExists");
+    await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, 
+      utils.HORIZEN_FOUNDATION, utils.HORIZEN_DAO
+    )).to.be.revertedWithCustomError(ZenMigrationFactory, "TokenAlreadyExists");
   });
 
 

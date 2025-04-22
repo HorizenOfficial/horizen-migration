@@ -18,8 +18,11 @@ contract ZenToken is ERC20Capped, AccessControl {
     uint256 internal constant TOKEN_SIZE = 10 ** 18;
 
     address public horizenFoundation;
-    uint8 notificationCounter;
+    address public horizenFoundationVested;
+    address public horizenDao;
+    address public horizenDaoVested;
 
+    uint8 notificationCounter;
 
     error CallerNotMinter(address caller);
 
@@ -38,19 +41,28 @@ contract ZenToken is ERC20Capped, AccessControl {
     /// @param tokenSymbol Ticker of the token
     /// @param _eonBackupContract Address of EON Vault contract
     /// @param _zendBackupContract Address of ZEND Vault contract
-    /// @param _horizenFoundation Address who will receive the remaining Zen supply
+    /// @param _horizenFoundation Address who will receive the remaining portion of Zen reserved to Foundation (immediately available)
+    /// @param _horizenFoundationVested Address who will receive the remaining portion of Zen to the Foundation (with locking period)
+    /// @param _horizenDao Address who will receive the remaining portion of Zen reserved to the DAO (immediately available)
+    /// @param _horizenDaoVested Address who will receive the remaining portion  of Zen reserved to the DAO (with locking period)
     constructor(
         string memory tokenName,
         string memory tokenSymbol,
         address _eonBackupContract,
         address _zendBackupContract, 
-        address _horizenFoundation
+        address _horizenFoundation,
+        address _horizenFoundationVested,
+        address _horizenDao,
+        address _horizenDaoVested
     ) ERC20(tokenName, tokenSymbol) ERC20Capped(TOTAL_ZEN_SUPPLY * TOKEN_SIZE) {
 
         // Grant the minter role to a specified account
         _grantRole(MINTER_ROLE, _eonBackupContract);
         _grantRole(MINTER_ROLE, _zendBackupContract);
         horizenFoundation = _horizenFoundation;
+        horizenFoundationVested = _horizenFoundationVested;
+        horizenDao = _horizenDao;  
+        horizenDaoVested = _horizenDaoVested;
     }
 
     function mint(address to, uint256 amount) public canMint {

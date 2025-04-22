@@ -10,23 +10,28 @@ describe("ZEN Token contract testing", function () {
   var minter_1;
   var minter_2;
   var horizenFoundation;
+  var horizenFoundationVested;
+  var horizenDao;
+  var horizenDaoVested;
   var zenToken;
 
 
   const MAX_ZEN_SUPPLY = BigInt(21_000_000n) * BigInt(10 ** 18);
 
   before(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(3);
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(5);
     minter_1 = (await ethers.getSigners())[0];
     minter_2 = (await ethers.getSigners())[1];
     horizenFoundation = (await ethers.getSigners())[2];
-    
+    horizenFoundationVested = (await ethers.getSigners())[3]; //for the purpose of this test, we will just use a EOA instead of the vesting contract
+    horizenDao = (await ethers.getSigners())[4];
+    horizenDaoVested = (await ethers.getSigners())[5];  //for the purpose of this test, we will just use a EOA instead of the vesting contract
   });
 
 
   it("Deployment of the ERC-20 contract", async function () {
     let factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
-    zenToken = await factory.deploy("ZTest", "ZTEST", minter_1, minter_2, horizenFoundation);
+    zenToken = await factory.deploy("ZTest", "ZTEST", minter_1, minter_2, horizenFoundation, horizenFoundationVested, horizenDao, horizenDaoVested);
     let receipt = await zenToken.deploymentTransaction().wait(); // Wait for confirmation
 
     expect(await zenToken.cap(), "Wrong max supply").to.equal(MAX_ZEN_SUPPLY);
