@@ -104,7 +104,7 @@ describe("ZEN Token contract testing", function () {
 
     await expect(zenToken.connect(minter_2).mint(horizenFoundation, 1)).to.be.revertedWithCustomError(zenToken, "CallerNotMinter"); 
 
-    // Check that after both minters notified the end of minting, the remaining supply was assigned to horizenFoundation
+    // Check that after both minters notified the end of minting, the remaining supply was assigned to horizen Foundation and DAO addresses and vesting contracts
     expect(await zenToken.totalSupply()).to.equal(MAX_ZEN_SUPPLY);
     let remainingSupply = MAX_ZEN_SUPPLY - BigInt(initialSupply);
 
