@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+
 import "./ZenToken.sol";
 import "./EONBackupVault.sol";
 import "./ZendBackupVault.sol";
@@ -27,10 +28,12 @@ contract ZenMigrationFactory is Ownable {
     /// @param tokenName Name of the token
     /// @param tokenSymbol Token ticker
     /// @param base_claim_message One of the parts of the message to sign for zen claim
+    /// @param horizenFoundation Address who will receive the remaining Zen supply
     function deployMigrationContracts(
         string memory tokenName,
         string memory tokenSymbol,
-        string memory base_claim_message
+        string memory base_claim_message,
+        address horizenFoundation
     ) public onlyOwner {
         if (address(token) != address(0)) {
             revert TokenAlreadyExists();
@@ -42,7 +45,8 @@ contract ZenMigrationFactory is Ownable {
             tokenName,
             tokenSymbol,
             address(eonVault),
-            address(zendVault)
+            address(zendVault),
+            horizenFoundation
         );
 
         eonVault.setERC20(address(token));

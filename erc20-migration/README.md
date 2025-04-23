@@ -1,6 +1,8 @@
 This folder contains the Hardhat scripts for restoring EON and Zend balances.
 The script for EON will automatically mint an amount of ZEN ERC-20 tokens equal to the old EON balance for each account.
-The script for Zend will just load all balances inside a vault contract. Then, each user will have to request an explicit claim for minting an amount of ZEN ERC-20 tokens equal to their old Zend balance.
+The script for Zend will just load all balances inside a vault contract. The total balance amount is minted in ZEN ERC-20 token and assigned to the address of the Zend Vault.
+Then, each user will have to request an explicit claim for transferring an amount of ZEN ERC-20 tokens equal to their old Zend balance from the Zend Vault account to a destination address of their choice.
+After all ZEN tokens corresponding to EON and ZEND balances have been minted, the remaining ZEN supply is automatically minted and assigned to an address owned by the Horizon Foundation.
 
 The scripts use the following contracts:
 
@@ -61,8 +63,13 @@ Usage:
    <i>npx hardhat hashZEND</i>
 - Update in .env file the entry ZEND_HASH with the hash calculated in the previous step.
 - Run <i>npx hardhat restoreZEND</i>
-
-6. For testing the <i>restoreEON</i> and <i>npx hardhat restoreZEND</i> tasks:
+6. For checking that the Horizen Foundation has received the remaining ZEN supply:
+- In .env file update the entries: 
+    - HORIZEN_FOUNDATION=\<address of Horizen Foundation\>. 
+    - EON_TOTAL_BALANCE=\<Total ZEN balance restored from EON. It can be retrieved as output of restoreEON task\>
+    - ZEND_TOTAL_BALANCE=\<Total ZEN balance restored from ZEND. It can be retrieved as output of restoreZEND task\>
+-  run <i>npx hardhat finalCheck</i>.
+7. For testing the <i>restoreEON</i> and <i>npx hardhat restoreZEND</i> tasks:
  - run <i>npx hardhat node</i>. This command will run a test node, with some predefined accounts.
  - Rename .env.template file to .env and update the entries: 
     - NETWORK=horizenl3. 
@@ -70,6 +77,7 @@ Usage:
     - ADMIN_PRIVK=\<private key\> private key of one of the predefined accounts
     - EON_FILE=\<EON accounts file name\>
     - ZEND_FILE=\<ZEND accounts file name\>
+    - HORIZEN_FOUNDATION=\<address of Horizen Foundation\>. 
  - run <i>npx hardhat contractSetup</i>. This will deploy the needed contracts. 
  - Set the contract addresses in .env file:
     - TOKEN_ADDRESS=\<address of ZenToken contract\>

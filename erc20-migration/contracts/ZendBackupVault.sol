@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT 
 pragma solidity ^0.8.0;
 
-import "./ZenToken.sol";
 import {VerificationLibrary} from  './VerificationLibrary.sol';
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ZenToken.sol";
 
 /// @title ZendBackupVault
 /// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, it allows manual claiming in the new chain.
@@ -54,6 +54,8 @@ contract ZendBackupVault is Ownable {
     error InvalidPublicKeySize(uint256 size);
     error UnexpectedZeroPublicKey(PubKey);
     error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
+
+
     event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
 
     /// @notice verify if we are in the state in which users can already claim
@@ -83,21 +85,32 @@ contract ZendBackupVault is Ownable {
         cumulativeHashCheckpoint = _cumulativeHashCheckpoint;
     }
 
-    /// @notice Insert a new batch of tuples (bytes20, value) and updates the cumulative hash.
-    ///         The zendAddresses in bs58 decoded format
+    /// @notice Insert a new batch of account tuples (bytes20, value) and updates the cumulative hash. The total balance of all accounts is minted and assigned to Zend Vault contract.
+    ///         The zend addresses are in bs58 decoded format, without prefix and checksum.
     ///         To guarantee the same algorithm is applied, the expected cumulativeHash after the batch processing must be provided explicitly
+    /// @param expectedCumulativeHash  the cumulative recursive hash calculated with all the data already inserted plus the current batch.
+    /// @param addressValues new accounts batch to insert 
     function batchInsert(bytes32 expectedCumulativeHash, AddressValue[] calldata addressValues) public onlyOwner {
         if (cumulativeHashCheckpoint == bytes32(0)) revert CumulativeHashCheckpointNotSet();  
+        if (address(zenToken) == address(0)) revert ERC20NotSet();
+        if (_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
+
         uint256 i;
         bytes32 auxHash = _cumulativeHash;
-        if(_cumulativeHash == cumulativeHashCheckpoint) revert CumulativeHashCheckpointReached();
+        uint256 cumulativeBalance;
         while (i != addressValues.length) {
             balances[addressValues[i].addr] = addressValues[i].value;
             auxHash = keccak256(abi.encode(auxHash, addressValues[i].addr, addressValues[i].value));
+            unchecked {cumulativeBalance = cumulativeBalance + addressValues[i].value; }
             unchecked { ++i; }
         }
         _cumulativeHash = auxHash;
         if (expectedCumulativeHash != _cumulativeHash) revert CumulativeHashNotValid();   
+        zenToken.mint(address(this), cumulativeBalance);
+
+        if (cumulativeHashCheckpoint == _cumulativeHash){
+            zenToken.notifyMintingDone();
+        }
     }
 
     /// @notice Set official ZEN ERC-20 smart contract that will be used for minting
@@ -106,6 +119,7 @@ contract ZendBackupVault is Ownable {
         if(addr == address(0)) revert AddressNotValid();
         zenToken = ZenToken(addr);
         message_prefix = string(abi.encodePacked(zenToken.symbol(), MESSAGE_CONSTANT));
+
     }
 
     /// @notice Internal claim function, to reuse the code between P2PKH and P2PSH
@@ -113,16 +127,16 @@ contract ZendBackupVault is Ownable {
         uint256 amount = balances[zenAddress];
         
         balances[zenAddress] = 0;
-        zenToken.mint(destAddress, amount);
+        zenToken.transfer(destAddress, amount);
         emit Claimed(destAddress, zenAddress, amount);
     }
 
     /// @notice Claim a P2PKH balance.
-    ///         destAddress is the receiver of the funds
-    ///         hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
+    /// @param  destAddress is the receiver of the funds
+    /// @param  hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
     ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destAddress in lowercase string hex format)
-    ///         pubKeyX and pubKeyY are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
+    /// @param  pubKey are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, PubKey calldata pubKey) public canClaim(destAddress) {
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
@@ -134,7 +148,8 @@ contract ZendBackupVault is Ownable {
              zenAddress = VerificationLibrary.pubKeyUncompressedToZenAddress(pubKey.x, pubKey.y);
         }
         //check amount to claim
-        if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
 
         //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
         string memory asString = Strings.toChecksumHexString(destAddress);
