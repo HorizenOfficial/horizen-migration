@@ -31,7 +31,7 @@ contract LinearTokenVesting  is Ownable {
     error VestingAlreadyStarted();
 
     /// @notice Smart contract constructor
-    /// @param _beneficiary the account that will receive the the vested zen
+    /// @param _beneficiary the account that will receive the vested zen
     /// @param _timeBetweenClaims The minimum time in seconds that must be waited between claims
     /// @param _intervalsToClaim The number of vesting periods 
     constructor(address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(msg.sender){
