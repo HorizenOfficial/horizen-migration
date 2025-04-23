@@ -68,7 +68,7 @@ Usage:
    <i>npx hardhat hashZEND</i>
 - Update in .env file the entry ZEND_HASH with the hash calculated in the previous step.
 - Run <i>npx hardhat restoreZEND</i>
-6. For checking that the Horizen Foundation and the Horizen DAO has received the 25% of the remaining ZEN supply:
+6. For checking that the Horizen Foundation and the Horizen DAO have received the 25% of the remaining ZEN supply:
 - In .env file update the entries: 
     - HORIZEN_FOUNDATION=\<address of Horizen Foundation\>. 
     - HORIZEN_DAO=\<address of Horizen DAO\>. 
