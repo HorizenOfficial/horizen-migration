@@ -2,7 +2,7 @@ This folder contains the Hardhat scripts for restoring EON and Zend balances.
 The script for EON will automatically mint an amount of ZEN ERC-20 tokens equal to the old EON balance for each account.
 The script for Zend will just load all balances inside a vault contract. The total balance amount is minted in ZEN ERC-20 token and assigned to the address of the Zend Vault.
 Then, each user will have to request an explicit claim for transferring an amount of ZEN ERC-20 tokens equal to their old Zend balance from the Zend Vault account to a destination address of their choice.
-After all ZEN tokens corresponding to EON and ZEND balances have been minted, the remaining ZEN supply is automatically minted and assigned to an address owned by the Horizon Foundation and an address owned by the Horizon DAO with the following rules:
+After all ZEN tokens corresponding to EON and ZEND balances have been minted, the remaining ZEN supply is automatically minted and assigned to an address owned by the Horizen Foundation and an address owned by the Horizen DAO with the following rules:
 - the 25% is readily available after the migration ended
 - the 75% will become available after predefined vesting periods, specified in LinearTokenVesting contract.
 

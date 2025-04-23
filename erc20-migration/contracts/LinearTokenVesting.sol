@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title LinearTokenVesting
 /// @notice This contract implements the vesting strategy for the remaining ZEN supply.  
-contract LinearTokenVesting  is Ownable {
+contract LinearTokenVesting is Ownable {
 
     ERC20 public token;
     address public immutable beneficiary;
