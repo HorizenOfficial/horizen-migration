@@ -44,8 +44,10 @@ describe("Migration Contracts Factory testing", function () {
     expect(eonVault).to.be.not.equal(utils.NULL_ADDRESS);
     const zendVault = await ZenMigrationFactory.zendVault();
     expect(zendVault).to.be.not.equal(utils.NULL_ADDRESS);
+
     const horizenFoundationVestingContract = await ZenMigrationFactory.horizenFoundationVestingContract();
     expect(horizenFoundationVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
+
     let vestingFoundation = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenFoundationVestingContract);
     expect(await vestingFoundation.beneficiary()).to.be.equal(utils.HORIZEN_FOUNDATION);
 
@@ -84,7 +86,7 @@ describe("Migration Contracts Factory testing", function () {
 
     await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, 
       utils.HORIZEN_FOUNDATION, utils.HORIZEN_DAO
-    )).to.be.revertedWithCustomError(ZenMigrationFactory, "TokenAlreadyExists");
+    )).to.be.revertedWithCustomError(ZenMigrationFactory, "ContractsAlreadyDeployed");
   });
 
 

@@ -53,6 +53,7 @@ describe("Vesting setup test", function () {
     factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
     vesting = await factory.deploy(beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
+    
     expect(await vesting.token()).to.be.equal(utils.NULL_ADDRESS);
     expect(await vesting.beneficiary()).to.be.equal(beneficiary);
     expect(await vesting.amountForEachClaim()).to.be.equal(0);
@@ -71,15 +72,32 @@ describe("Vesting setup test", function () {
   });
 
   it("setERC20", async function () {
-
     await vesting.setERC20(await erc20.getAddress());
     expect(await vesting.token()).to.be.equal(await erc20.getAddress());
 
   });
 
+  it("setERC20 should not be called twice", async function () {
+    await expect(vesting.setERC20(await erc20.getAddress())).to.be.revertedWithCustomError(vesting, "UnauthorizedOperation");
+  });
+
   it("claim fails if startVesting was not called", async function () {
     startTimestamp = startTimestamp + TIME_BETWEEN_INTERVALS + 1;
     await _setTimestampAndClaimFails(startTimestamp, "VestingNotStartedYet");
-
   });
+
+  it("startVesting", async function () {
+    expect(await vesting.amountForEachClaim()).to.be.equal(0);
+    expect(await vesting.startTimestamp()).to.be.equal(0);
+    let vestingStartTime = startTimestamp + 10;
+    await time.setNextBlockTimestamp(vestingStartTime);
+    await erc20.mockStartVesting(vesting.getAddress(), VESTING_AMOUNT);
+    
+    expect(await vesting.amountForEachClaim()).to.be.equal(AMOUNT_EACH_CLAIM);
+    expect(await vesting.startTimestamp()).to.be.equal(vestingStartTime);
+  });  
+
+  it("startVesting should not be called twice", async function () {
+    await expect(erc20.mockStartVesting(vesting.getAddress(), VESTING_AMOUNT)).to.be.revertedWithCustomError(vesting, "VestingAlreadyStarted");
+  });  
 });

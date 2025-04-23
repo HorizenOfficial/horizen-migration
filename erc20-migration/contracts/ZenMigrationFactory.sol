@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZenMigrationFactory
-/// @notice  This is a factory contract responsible for deploying the 3 contracts used for ZEN migration.
+/// @notice This is a factory contract responsible for deploying all the contracts used for ZEN migration.
 contract ZenMigrationFactory is Ownable {
 
     ZenToken public token;
@@ -20,10 +20,10 @@ contract ZenMigrationFactory is Ownable {
     LinearTokenVesting public horizenFoundationVestingContract;
     LinearTokenVesting public horizenDaoVestingContract;
 
-    uint256 internal constant  VESTING_TIME_BETWEEN_INTERVALS = 30 * 24 * 60 * 60 * 1000; //Length in milliseconds of each vesting interval (30 days)
-    uint256 internal constant  VESTING_INTERVALS = 48; //Total number of vesting intervals
+    uint256 internal constant VESTING_TIME_BETWEEN_INTERVALS = 30 * 24 * 60 * 60; //Length in seconds of each vesting interval (30 days)
+    uint256 internal constant VESTING_INTERVALS = 48; //Total number of vesting intervals
 
-    error TokenAlreadyExists();
+    error ContractsAlreadyDeployed();
 
     event ZenMigrationContractsCreated(address token, address eonVault, address zendVault, address horizenFoundationVestingContract, address horizenDaoVestingContract);
 
@@ -46,7 +46,7 @@ contract ZenMigrationFactory is Ownable {
 
     ) public onlyOwner {
         if (address(token) != address(0)) {
-            revert TokenAlreadyExists();
+            revert ContractsAlreadyDeployed();
         }
 
         eonVault = new EONBackupVault(address(this));
@@ -71,10 +71,8 @@ contract ZenMigrationFactory is Ownable {
 
         eonVault.transferOwnership(owner());
         zendVault.transferOwnership(owner());
-        horizenFoundationVestingContract.transferOwnership((owner()));
-        horizenDaoVestingContract.transferOwnership((owner()));
 
-       emit ZenMigrationContractsCreated(address(token), address(eonVault), address(zendVault), address(horizenFoundationVestingContract), address(horizenDaoVestingContract));
+        emit ZenMigrationContractsCreated(address(token), address(eonVault), address(zendVault), address(horizenFoundationVestingContract), address(horizenDaoVestingContract));
     }
 
 }

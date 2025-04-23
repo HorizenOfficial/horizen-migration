@@ -107,12 +107,16 @@ describe("ZEN Token contract testing", function () {
     // Check that after both minters notified the end of minting, the remaining supply was assigned to horizenFoundation
     expect(await zenToken.totalSupply()).to.equal(MAX_ZEN_SUPPLY);
     let remainingSupply = MAX_ZEN_SUPPLY - BigInt(initialSupply);
-    let expectedTotalFoundationSupply = remainingSupply * BigInt(40) / BigInt(100);
+
+    let expectedTotalDaoSupply = remainingSupply * BigInt(60) / BigInt(100);
+    let expectedTotalFoundationSupply = remainingSupply - expectedTotalDaoSupply;
+
     let expectedInitialFoundationSupply = expectedTotalFoundationSupply * BigInt(25) / BigInt(100);
     let expectedVestedFoundationSupply = expectedTotalFoundationSupply - expectedInitialFoundationSupply;
-    let expectedTotalDaoSupply = remainingSupply - expectedTotalFoundationSupply;
+
     let expectedInitialDaoSupply = expectedTotalDaoSupply * BigInt(25) / BigInt(100);
     let expectedVestedFDaoSupply = expectedTotalDaoSupply - expectedInitialDaoSupply;
+
     expect(await zenToken.balanceOf(horizenFoundation)).to.equal(expectedInitialFoundationSupply);
     expect(await zenToken.balanceOf(horizenFoundationVested)).to.equal(expectedVestedFoundationSupply);
     expect(await zenToken.balanceOf(horizenDao)).to.equal(expectedInitialDaoSupply);

@@ -18,15 +18,17 @@ contract ZenToken is ERC20Capped, AccessControl {
     uint256 internal constant TOKEN_SIZE = 10 ** 18;
 
     address public horizenFoundationVested;
-    address public horizenDaoVested;
 
     uint8 notificationCounter;
+
+    address public horizenDaoVested;
+
 
     error AddressParameterCantBeZero();
     error CallerNotMinter(address caller);
 
     modifier canMint() {
-        // Check that the calling account has the minter role
+        // Checks that the calling account has the minter role
         if (!hasRole(MINTER_ROLE, msg.sender)) {
             revert CallerNotMinter(msg.sender);
         }
@@ -56,9 +58,11 @@ contract ZenToken is ERC20Capped, AccessControl {
             revert AddressParameterCantBeZero();
         if (_horizenDaoVested == address(0))
             revert AddressParameterCantBeZero();
+
         // Grant the minter role to a specified account
         _grantRole(MINTER_ROLE, _eonBackupContract);
         _grantRole(MINTER_ROLE, _zendBackupContract);
+        
         horizenFoundationVested = _horizenFoundationVested;
         horizenDaoVested = _horizenDaoVested;
     }
@@ -74,11 +78,12 @@ contract ZenToken is ERC20Capped, AccessControl {
         }
         if (notificationCounter == 2) {
             uint256 remainingSupply = cap() - totalSupply();
-            //Horizen Foundation is eligible of 40% of the remaining supply. The rest is for the DAO
-            uint256 foundationSupply = (remainingSupply * 4) / 10;
-            uint256 daoSupply = remainingSupply - foundationSupply;
-            uint256 foundationInitialSupply = (foundationSupply * 25) / 100;
+            //Horizen DAO is eligible of 60% of the remaining supply. The rest is for the Foundation.
+            uint256 daoSupply = (remainingSupply * 6) / 10;
+            uint256 foundationSupply = remainingSupply - daoSupply;
+
             uint256 daoInitialSupply = (daoSupply * 25) / 100;
+            uint256 foundationInitialSupply = (foundationSupply * 25) / 100;
             _mint(
                 LinearTokenVesting(horizenFoundationVested).beneficiary(),
                 foundationInitialSupply
