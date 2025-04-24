@@ -19,7 +19,7 @@ contract ZenToken is ERC20Capped, AccessControl {
 
     address public horizenFoundationVested;
 
-    uint8 notificationCounter;
+    uint8 numOfMinters;
 
     address public horizenDaoVested;
 
@@ -62,6 +62,7 @@ contract ZenToken is ERC20Capped, AccessControl {
         // Grant the minter role to a specified account
         _grantRole(MINTER_ROLE, _eonBackupContract);
         _grantRole(MINTER_ROLE, _zendBackupContract);
+        numOfMinters = 2;
         
         horizenFoundationVested = _horizenFoundationVested;
         horizenDaoVested = _horizenDaoVested;
@@ -74,9 +75,9 @@ contract ZenToken is ERC20Capped, AccessControl {
     function notifyMintingDone() public canMint {
         _revokeRole(MINTER_ROLE, msg.sender);
         unchecked {
-            ++notificationCounter;
+            --numOfMinters;
         }
-        if (notificationCounter == 2) {
+        if (numOfMinters == 0) {
             uint256 remainingSupply = cap() - totalSupply();
             //Horizen DAO is eligible of 60% of the remaining supply. The rest is for the Foundation.
             uint256 daoSupply = (remainingSupply * 6) / 10;
