@@ -23,6 +23,7 @@ contract LinearTokenVesting is Ownable {
     error TokenAndBeneficiaryCantBeTheSame();
     error AmountCantBeZero();
     error InvalidTimes();
+    error InvalidNumOfIntervals();
     error NothingToClaim();
     error ClaimCompleted();
     error UnauthorizedOperation();
@@ -36,7 +37,8 @@ contract LinearTokenVesting is Ownable {
     /// @param _intervalsToClaim The number of vesting periods 
     constructor(address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(msg.sender){
         if(_beneficiary == address(0)) revert AddressParameterCantBeZero();
-        if(_timeBetweenClaims == 0) revert InvalidTimes();       
+        if(_timeBetweenClaims == 0) revert InvalidTimes();
+        if(_intervalsToClaim == 0) revert InvalidNumOfIntervals();       
         beneficiary = _beneficiary;
         timeBetweenClaims = _timeBetweenClaims;
         intervalsToClaim = _intervalsToClaim;
