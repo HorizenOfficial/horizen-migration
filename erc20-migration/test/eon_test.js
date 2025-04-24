@@ -77,8 +77,9 @@ describe("Token and EON Backup contract testing", function () {
 
   it("Deployment of the ERC-20 contract", async function () {
     var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
-    const MOCK_ZEND_VAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
-    erc20 = await factory.deploy("ZTest", "ZTEST", await EONBackupVault.getAddress(), MOCK_ZEND_VAULT_ADDRESS, utils.HORIZEN_FOUNDATION);
+    const MOCK_EMPTY_ADDRESS = "0x0000000000000000000000000000000000000001";
+    erc20 = await factory.deploy("ZTest", "ZTEST", await EONBackupVault.getAddress(), 
+      MOCK_EMPTY_ADDRESS, MOCK_EMPTY_ADDRESS, MOCK_EMPTY_ADDRESS);
     const receipt = await erc20.deploymentTransaction().wait(); // Wait for confirmation
   });
 

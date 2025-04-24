@@ -58,6 +58,7 @@ const EON_VAULT_CONTRACT_NAME = "EONBackupVault"
 const ZEND_VAULT_CONTRACT_NAME = "ZendBackupVault"
 const ZEN_TOKEN_CONTRACT_NAME = "ZenToken"
 const ZEN_FACTORY_CONTRACT_NAME = "ZenMigrationFactory"
+const VESTING_CONTRACT_NAME = "LinearTokenVesting"
 
 function loadAccountsFromFile(fileName) {
   const jsonFile = fs.readFileSync(fileName, 'utf-8');
@@ -127,6 +128,10 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
     console.error("HORIZEN_FOUNDATION environment variable not set: missing HORIZEN Foundation account address. Exiting.");
     exit(-1);
   }
+  if (process.env.HORIZEN_DAO == null) {
+    console.error("HORIZEN_DAO environment variable not set: missing HORIZEN DAO account address. Exiting.");
+    exit(-1);
+  }
 
   const admin = (await ethers.getSigners())[0];
 
@@ -144,7 +149,7 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   let tokenName = "ZEN"
   let tokenSymbol = "ZEN"
   let base_message = "CLAIM"
-  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, process.env.HORIZEN_FOUNDATION);    
+  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, process.env.HORIZEN_FOUNDATION, process.env.HORIZEN_DAO);    
 
   receipt = await res.wait();
   if (receipt.status == 0) {
@@ -155,7 +160,23 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   console.log(`Contract EON deployed at: ${await ZenMigrationFactory.eonVault()}`);
   console.log(`Contract ZEND deployed at: ${await ZenMigrationFactory.zendVault()}`);
   console.log(`Contract token deployed at: ${await ZenMigrationFactory.token()}`);
+  console.log(`Horizen Foundation Vesting Contract deployed at: ${await ZenMigrationFactory.horizenFoundationVestingContract()}`);
+  console.log(`Horizen DAO Vesting Contract deployed at: ${await ZenMigrationFactory.horizenDaoVestingContract()}`);
 
+  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, await ZenMigrationFactory.token());
+  const foundationVesting = await hre.ethers.getContractAt(VESTING_CONTRACT_NAME, await ZENToken.horizenFoundationVested());
+  let foundationVestingBeneficiary = await foundationVesting.beneficiary();
+  if (foundationVestingBeneficiary != process.env.HORIZEN_FOUNDATION){
+    console.error("Wrong beneficiary for Horizen Foundation Vesting Contract. Expected: " +  process.env.HORIZEN_FOUNDATION + ", found: " + foundationVestingBeneficiary);
+    exit(-1);
+  }
+
+  const daoVesting = await hre.ethers.getContractAt(VESTING_CONTRACT_NAME, await ZENToken.horizenDaoVested());
+  let daoVestingBeneficiary = await daoVesting.beneficiary();
+  if (daoVestingBeneficiary != process.env.HORIZEN_DAO){
+    console.error("Wrong beneficiary for Horizen DAO Vesting Contract. Expected: " +  process.env.HORIZEN_DAO + ", found: " + daoVestingBeneficiary);
+    exit(-1);
+  }
 
 });
 
@@ -500,6 +521,11 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
     exit(-1);
   }
   
+  if (process.env.HORIZEN_DAO == null) {
+    console.error("HORIZEN_DAO environment variable not set: missing Horizen Dao account address. Exiting.");
+    exit(-1);
+  }
+  
   const MAX_ZEN_SUPPLY = BigInt(21_000_000n) * BigInt(10 ** 18);
   const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
   const totalSupply = await ZENToken.totalSupply();
@@ -509,14 +535,60 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
     exit(-1);    
   }
 
+  const horizenFoundationVestedAddress =  await ZENToken.horizenFoundationVested();
+  const foundationVesting = await hre.ethers.getContractAt(VESTING_CONTRACT_NAME, horizenFoundationVestedAddress);
+  let foundationVestingBeneficiary = await foundationVesting.beneficiary();
+  if (foundationVestingBeneficiary != process.env.HORIZEN_FOUNDATION){
+    console.error("Wrong beneficiary for Horizen Foundation Vesting Contract. Expected: " +  process.env.HORIZEN_FOUNDATION + ", found: " + foundationVestingBeneficiary);
+    exit(-1);
+  }
 
-  let zenFoundationBalance = await ZENToken.balanceOf(process.env.HORIZEN_FOUNDATION);
-  const expectedZenFoundationBalance = MAX_ZEN_SUPPLY - BigInt(process.env.ZEND_TOTAL_BALANCE) - BigInt(process.env.EON_TOTAL_BALANCE);
+  const horizenDaoVestedAddress =  await ZENToken.horizenDaoVested();
+  const daoVesting = await hre.ethers.getContractAt(VESTING_CONTRACT_NAME, horizenDaoVestedAddress);
+  let daoVestingBeneficiary = await daoVesting.beneficiary();
+  if (daoVestingBeneficiary != process.env.HORIZEN_DAO){
+    console.error("Wrong beneficiary for Horizen DAO Vesting Contract. Expected: " +  process.env.HORIZEN_DAO + ", found: " + daoVestingBeneficiary);
+    exit(-1);
+  }
+
+
+  const expectedRemainingZenSupply = MAX_ZEN_SUPPLY - BigInt(process.env.ZEND_TOTAL_BALANCE) - BigInt(process.env.EON_TOTAL_BALANCE);
+
+  const expectedFoundationZenSupply = expectedRemainingZenSupply * BigInt(4)/BigInt(10);
+  const expectedInitialFoundationZenSupply = expectedFoundationZenSupply/BigInt(4);
+  let zenFoundationBalance = await ZENToken.balanceOf(foundationVestingBeneficiary);
   console.log("Horizen Foundation address balance: " + zenFoundationBalance);
-  console.log("Total balance: " + (zenFoundationBalance + BigInt(process.env.ZEND_TOTAL_BALANCE) + BigInt(process.env.EON_TOTAL_BALANCE)));
-  if (zenFoundationBalance != expectedZenFoundationBalance){
-    console.error("Remaining ZEN supply not assigned to Horizen Foundation address {0}. Expected balance: {1}, actual balance {2}", process.env.HORIZEN_FOUNDATION, expectedZenFoundationBalance, zenFoundationBalance);
+  if (zenFoundationBalance != expectedInitialFoundationZenSupply){
+    console.error("Wrong Horizen Foundation balance. Expected balance: {0}, actual balance {1}", expectedInitialFoundationZenSupply, zenFoundationBalance);
     exit(-1);        
   }
+  const expectedInitialVestingFoundationZenSupply = expectedFoundationZenSupply - expectedInitialFoundationZenSupply;
+  let zenVestingFoundationBalance = await ZENToken.balanceOf(horizenFoundationVestedAddress);
+  console.log("Horizen Foundation vesting balance: " + zenVestingFoundationBalance);
+  if (zenVestingFoundationBalance != expectedInitialVestingFoundationZenSupply){
+    console.error("Wrong Horizen Foundation vesting balance. Expected balance: {0}, actual balance {1}", expectedInitialVestingFoundationZenSupply, zenVestingFoundationBalance);
+    exit(-1);        
+  }
+
+
+  const expectedDaoZenSupply = expectedRemainingZenSupply - expectedFoundationZenSupply;
+  const expectedInitialDaoZenSupply = expectedDaoZenSupply/BigInt(4);
+  let zenDaoBalance = await ZENToken.balanceOf(process.env.HORIZEN_DAO);
+  console.log("Horizen DAO address balance: " + zenDaoBalance);
+  if (zenDaoBalance != expectedInitialDaoZenSupply){
+    console.error("Wrong Horizen DAO balance. Expected balance: {0}, actual balance {1}", expectedInitialDaoZenSupply, zenDaoBalance);
+    exit(-1);        
+  }
+
+  const expectedInitialVestingDaoZenSupply = expectedDaoZenSupply - expectedInitialDaoZenSupply;
+  let zenVestingDaoBalance = await ZENToken.balanceOf(horizenDaoVestedAddress);
+  console.log("Horizen DAO vesting balance: " + zenVestingDaoBalance);
+  if (zenVestingDaoBalance != expectedInitialVestingDaoZenSupply){
+    console.error("Wrong Horizen Dao vesting balance. Expected balance: {0}, actual balance {1}", expectedInitialVestingDaoZenSupply, zenVestingDaoBalance);
+    exit(-1);        
+  }
+
+
+  console.log("Total balance: " + (BigInt(process.env.ZEND_TOTAL_BALANCE) + BigInt(process.env.EON_TOTAL_BALANCE) + zenFoundationBalance + zenVestingFoundationBalance + zenDaoBalance + zenVestingDaoBalance));
   console.log("Result: OK");
 });
