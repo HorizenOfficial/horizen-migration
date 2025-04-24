@@ -7,7 +7,8 @@ describe("Vesting setup test", function () {
 
   let erc20;
   let vesting;
-  let beneficiary;
+  let initialBeneficiary;
+  let newBeneficiary;
   let TIME_BETWEEN_INTERVALS = 1000;
   let INTERVALS_TO_CLAIM = 20;
   let AMOUNT_EACH_CLAIM = 10;
@@ -15,25 +16,11 @@ describe("Vesting setup test", function () {
   let startTimestamp;
  
   beforeEach(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(1);
-    beneficiary = (await ethers.getSigners())[0].address;
-
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(4);
+    vestingAdmin  = (await ethers.getSigners())[0];
+    initialBeneficiary  = (await ethers.getSigners())[1].address;
+    newBeneficiary = (await ethers.getSigners())[2].address;
   });
-
-  //helpers functions
-  async function _assertBalance(expectedBalance) {
-    let balance = await erc20.balanceOf(beneficiary);
-    expect(balance).to.be.equal(expectedBalance);
-    
-    //check contract balance
-    let contractBalance = await erc20.balanceOf(await vesting.getAddress());
-    expect(contractBalance).to.be.equal(VESTING_AMOUNT - expectedBalance);
-  }
-
-  async function _setTimestampAndClaim(claimTimestamp) {
-    await time.setNextBlockTimestamp(claimTimestamp);
-    await vesting.claim();
-  }
 
   async function _setTimestampAndClaimFails(claimTimestamp, errorName) {
     await time.setNextBlockTimestamp(claimTimestamp);
@@ -51,11 +38,11 @@ describe("Vesting setup test", function () {
     //deploy vesting contract
     startTimestamp = await time.latest() + 10;
     factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
-    vesting = await factory.deploy(beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    vesting = await factory.deploy(vestingAdmin.address, initialBeneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
     
     expect(await vesting.token()).to.be.equal(utils.NULL_ADDRESS);
-    expect(await vesting.beneficiary()).to.be.equal(beneficiary);
+    expect(await vesting.beneficiary()).to.be.equal(initialBeneficiary);
     expect(await vesting.amountForEachClaim()).to.be.equal(0);
     expect(await vesting.startTimestamp()).to.be.equal(0);
     expect(await vesting.timeBetweenClaims()).to.be.equal(TIME_BETWEEN_INTERVALS);
@@ -68,6 +55,21 @@ describe("Vesting setup test", function () {
     await expect(erc20.mockStartVesting(vesting.getAddress(), VESTING_AMOUNT)).to.be.revertedWithCustomError(vesting, "UnauthorizedOperation");
     startTimestamp = startTimestamp + TIME_BETWEEN_INTERVALS + 1;
     await _setTimestampAndClaimFails(startTimestamp, "ERC20NotSet");
+
+  });
+
+  it("changeBeneficiary should work even if setErc20 was not called", async function () {
+    
+    (await vesting.changeBeneficiary(newBeneficiary)).wait();
+
+    //Nothing will change except for the beneficiary 
+    expect(await vesting.token()).to.be.equal(utils.NULL_ADDRESS);
+    expect(await vesting.beneficiary()).to.be.equal(newBeneficiary);
+    expect(await vesting.amountForEachClaim()).to.be.equal(0);
+    expect(await vesting.startTimestamp()).to.be.equal(0);
+    expect(await vesting.timeBetweenClaims()).to.be.equal(TIME_BETWEEN_INTERVALS);
+    expect(await vesting.intervalsToClaim()).to.be.equal(INTERVALS_TO_CLAIM);
+    expect(await vesting.intervalsAlreadyClaimed()).to.be.equal(0);
 
   });
 
@@ -84,6 +86,21 @@ describe("Vesting setup test", function () {
   it("claim fails if startVesting was not called", async function () {
     startTimestamp = startTimestamp + TIME_BETWEEN_INTERVALS + 1;
     await _setTimestampAndClaimFails(startTimestamp, "VestingNotStartedYet");
+  });
+
+  it("changeBeneficiary should work even if startVesting was not called", async function () {
+    
+    (await vesting.changeBeneficiary(initialBeneficiary)).wait();
+
+    //Nothing will change except for the beneficiary 
+    expect(await vesting.token()).to.be.equal(await erc20.getAddress());
+    expect(await vesting.beneficiary()).to.be.equal(initialBeneficiary);
+    expect(await vesting.amountForEachClaim()).to.be.equal(0);
+    expect(await vesting.startTimestamp()).to.be.equal(0);
+    expect(await vesting.timeBetweenClaims()).to.be.equal(TIME_BETWEEN_INTERVALS);
+    expect(await vesting.intervalsToClaim()).to.be.equal(INTERVALS_TO_CLAIM);
+    expect(await vesting.intervalsAlreadyClaimed()).to.be.equal(0);
+
   });
 
   it("startVesting", async function () {
