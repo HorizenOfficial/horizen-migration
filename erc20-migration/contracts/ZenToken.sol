@@ -24,7 +24,7 @@ contract ZenToken is ERC20Capped, AccessControl {
     address public horizenDaoVested;
 
 
-    error AddressParameterCantBeZero();
+    error AddressParameterCantBeZero(string paramName);
     error CallerNotMinter(address caller);
 
     modifier canMint() {
@@ -51,13 +51,13 @@ contract ZenToken is ERC20Capped, AccessControl {
         address _horizenDaoVested
     ) ERC20(tokenName, tokenSymbol) ERC20Capped(TOTAL_ZEN_SUPPLY * TOKEN_SIZE) {
         if (_eonBackupContract == address(0))
-            revert AddressParameterCantBeZero();
+            revert AddressParameterCantBeZero("_eonBackupContract");
         if (_zendBackupContract == address(0))
-            revert AddressParameterCantBeZero();
+            revert AddressParameterCantBeZero("_zendBackupContract");
         if (_horizenFoundationVested == address(0))
-            revert AddressParameterCantBeZero();
+            revert AddressParameterCantBeZero("_horizenFoundationVested");
         if (_horizenDaoVested == address(0))
-            revert AddressParameterCantBeZero();
+            revert AddressParameterCantBeZero("_horizenDaoVested");
 
         // Grant the minter role to a specified account
         _grantRole(MINTER_ROLE, _eonBackupContract);
