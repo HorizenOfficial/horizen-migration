@@ -86,7 +86,9 @@ Usage:
     - EON_FILE=\<EON accounts file name\>
     - ZEND_FILE=\<ZEND accounts file name\>
     - HORIZEN_FOUNDATION=\<address of Horizen Foundation\>. 
+    - HORIZEN_FOUNDATION_ADMIN=\<address of Horizen Foundation vesting admin\>.
     - HORIZEN_DAO=\<address of Horizen DAO\>. 
+    - HORIZEN_DAO_ADMIN=\<address of Horizen DAO vesting admin\>.
  - run <i>npx hardhat contractSetup</i>. This will deploy the needed contracts. 
  - Set the contract addresses in .env file:
     - TOKEN_ADDRESS=\<address of ZenToken contract\>
