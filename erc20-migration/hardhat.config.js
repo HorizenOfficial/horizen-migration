@@ -141,9 +141,9 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   console.log(`Migration factory contract deployed at: ${ZenMigrationFactory.target}`);
 
 
-  let tokenName = "ZEN"
-  let tokenSymbol = "ZEN"
-  let base_message = "CLAIM"
+  let tokenName = process.env.TOKEN_NAME || "ZEN"
+  let tokenSymbol = process.env.TOKEN_SYMBOL || "ZEN"
+  let base_message = process.env.BASE_MESSAGE || "CLAIM"
   let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, process.env.HORIZEN_FOUNDATION);    
 
   receipt = await res.wait();
@@ -217,13 +217,15 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   let batchNumber = 0;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
-
+  let totalBatchNumber = Math.ceil(accounts.length/BATCH_LENGTH);
+  
   for (const [address, balance] of accounts) {
     totalBalance = totalBalance + BigInt(balance);
     addressesValues.push({ addr: address, value: balance });
     calcCumulativeHash = updateEONCumulativeHash(calcCumulativeHash, address, balance);
+
     if (addressesValues.length == BATCH_LENGTH) {
-      console.log("Inserting batch: " + batchNumber);
+      console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
       try {
         let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues);
         let receipt = await res.wait();
@@ -235,7 +237,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
           exit(-1);
         }
         else {
-          console.log("Inserted batch " + batchNumber);
+          console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
         }
       }
       catch (error) {
@@ -247,8 +249,9 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
       addressesValues = [];
     }
   }
+
   if (addressesValues.length > 0) {
-    console.log("Inserting last batch, number: " + batchNumber);
+    console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
     try {
       let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues);
       let receipt = await res.wait();
@@ -260,7 +263,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
         exit(-1);
       }
       else {
-        console.log("Inserted last batch: " + batchNumber);
+        console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
       }
     }
     catch (error) {
@@ -301,36 +304,6 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
     }
     round++;
   }
-
-  //check distributed balances
-  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
-
-  console.log("\n\n***************************************************************");
-  console.log("                 Checking distributed tokens");
-  console.log("***************************************************************\n");
-  let mismatch_messages = [];
-  let count = 1;
-  for (const [address, balance] of accounts) {
-    const progressPercentage = Math.floor(count / accounts.length * 100);
-    process.stdout.clearLine();
-    process.stdout.cursorTo(0);
-    process.stdout.write(`Progress: ${progressPercentage}%`);
-    let currentBalance = await ZENToken.balanceOf(address);
-    if (currentBalance != balance) {
-      mismatch_messages.push("Balance of address " + address + " is different from expected - expected: " + balance + ", actual: " + currentBalance);
-    }
-    count++;
-  }
-
-  console.log("\n***************************************************************");
-  console.log("             Checking end. Mismatches found: " + mismatch_messages.length);
-  if (mismatch_messages.length > 0) {
-    for (msg of mismatch_messages)
-      console.log(msg);
-  }
-  console.log("***************************************************************");
-
-  console.log("\nEON Total Restored Balance: " + totalBalance);
 });
 
 task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
@@ -384,13 +357,15 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   let batchNumber = 0;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
+  let totalBatchNumber = Math.ceil(accounts.length/BATCH_LENGTH);
 
   for (const [address, balance] of accounts) {
     totalBalance = totalBalance + BigInt(balance);
     addressesValues.push({ addr: address, value: balance });
     calcCumulativeHash = updateZENDCumulativeHash(calcCumulativeHash, address, balance);
+
     if (addressesValues.length == BATCH_LENGTH) {
-      console.log("Inserting batch: " + batchNumber);
+      console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
       try {
         let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
         let receipt = await res.wait();
@@ -402,7 +377,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
           exit(-1);
         }
         else {
-          console.log("Inserted batch " + batchNumber);
+          console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
         }
       }
       catch (error) {
@@ -414,8 +389,9 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
       addressesValues = [];
     }
   }
+
   if (addressesValues.length > 0) {
-    console.log("Inserting last batch, number: " + batchNumber);
+    console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
     try {
       let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
       let receipt = await res.wait();
@@ -427,7 +403,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
         exit(-1);
       }
       else {
-        console.log("Inserted last batch: " + batchNumber);
+        console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
       }
     }
     catch (error) {
@@ -444,13 +420,15 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
     exit(-1);
   }
   console.log("Correct final hash reached");
-
   console.log("End loading accounts");
+});
 
-  //check restored balances
+task("checkDistributed", "Checks distributed tokens", async(taskArgs, hre) => {
+  //check distributed balances
+  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
 
   console.log("\n\n***************************************************************");
-  console.log("                 Checking restored balances");
+  console.log("                 Checking distributed tokens");
   console.log("***************************************************************\n");
   let mismatch_messages = [];
   let count = 1;
@@ -459,9 +437,9 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
     process.stdout.write(`Progress: ${progressPercentage}%`);
-    let currentBalance = await ZENDVault.balances(address);
+    let currentBalance = await ZENToken.balanceOf(address);
     if (currentBalance != balance) {
-      mismatch_messages.push("Balance of address " + address + " different from expected - expected: " + balance + ", actual: " + currentBalance);
+      mismatch_messages.push("Balance of address " + address + " is different from expected - expected: " + balance + ", actual: " + currentBalance);
     }
     count++;
   }
@@ -473,9 +451,9 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
       console.log(msg);
   }
   console.log("***************************************************************");
-  console.log("\nZEND Total Restored Balance: " + totalBalance);
-});
 
+  console.log("\nEON Total Restored Balance: " + totalBalance);
+});
 
 task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
   if (process.env.TOKEN_ADDRESS == null) {
