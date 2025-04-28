@@ -47,7 +47,7 @@ describe("Vesting updates test", function () {
     
     //check contract balance
     let contractBalance = await erc20.balanceOf(await vesting.getAddress());
-    expect(contractBalance).to.be.equal(VESTING_AMOUNT- expectedBalance);
+    expect(contractBalance).to.be.equal(VESTING_AMOUNT - expectedBalance);
   }
 
   async function _setTimestampAndClaim(claimTimestamp) {
@@ -66,9 +66,23 @@ describe("Vesting updates test", function () {
     await expect(vesting.connect(randomUser).changeBeneficiary(newBeneficiary)).to.be.revertedWithCustomError(vesting, "UnauthorizedAccount");
   });
 
+  it("changeVestingParams fails if caller is not the admin", async function () {
+    let randomUser = (await ethers.getSigners())[3];
+    await expect(vesting.connect(randomUser).changeVestingParams(TIME_BETWEEN_INTERVALS + 1, INTERVALS_TO_CLAIM + 1)).to.be.revertedWithCustomError(vesting, "UnauthorizedAccount");
+  });
+
+
   it("changeBeneficiary fails if new beneficiary is NULL_ADDRESS", async function () {
     await expect(vesting.changeBeneficiary(utils.NULL_ADDRESS)).to.be.revertedWithCustomError(vesting, "AddressParameterCantBeZero");
   });
+
+  it("changeVestingParams fails if new params are 0", async function () {
+    await expect(vesting.changeVestingParams(TIME_BETWEEN_INTERVALS + 1, 0)).to.be.revertedWithCustomError(vesting, "InvalidNumOfIntervals");
+    await expect(vesting.changeVestingParams(0, INTERVALS_TO_CLAIM + 1)).to.be.revertedWithCustomError(vesting, "InvalidTimes");
+    await expect(vesting.changeVestingParams(0, 0)).to.be.revertedWithCustomError(vesting, "UnauthorizedAccount");
+  });
+
+
 
   it("changeBeneficiary before any claim period has passed", async function () {
     let vestingStartTime = await vesting.startTimestamp();
@@ -154,17 +168,5 @@ describe("Vesting updates test", function () {
     await expect(vesting.changeBeneficiary(newBeneficiary)).to.be.revertedWithCustomError(vesting, "UnauthorizedOperation");
   });
 
-  // it("claim success for all periods without claiming more after a long time", async function () {
-  //   await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS*2); //claim two
-  //   await _assertBalance(AMOUNT_EACH_CLAIM*2);
-  //   await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * (INTERVALS_TO_CLAIM+100)); //claim after a long time
-  //   await _assertBalance(VESTING_AMOUNT);
-  // });
 
-  // it("claim after one period, then claim success if multiple periods has passed", async function () {
-  //   await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 1.5);
-  //   await _assertBalance(AMOUNT_EACH_CLAIM);
-  //   await _setTimestampAndClaim(startTimestamp + TIME_BETWEEN_INTERVALS * 5.5);
-  //   await _assertBalance(AMOUNT_EACH_CLAIM*5);
-  // });
 });

@@ -14,17 +14,23 @@ contract LinearTokenVesting is Ownable {
 
     uint256 public amountForEachClaim;
     uint256 public startTimestamp;
-    uint256 public immutable timeBetweenClaims; 
-    uint256 public immutable intervalsToClaim;
+    uint256 public timeBetweenClaims; 
+    uint256 public intervalsToClaim;
     uint256 public intervalsAlreadyClaimed;
 
     event Claimed(uint256 claimAmount, uint256 timestamp);
     event ChangedBeneficiary(address newBeneficiary, address oldBeneficiary);
+    event ChangedVestingParams(
+                                uint256 newTimeBetweenClaims, 
+                                uint256 newIntervalsToClaim, 
+                                uint256 oldTimeBetweenClaims, 
+                                uint256 oldIntervalsToClaim);
 
     error AddressParameterCantBeZero();
     error TokenAndBeneficiaryCantBeTheSame();
     error AmountCantBeZero();
     error InvalidTimes();
+    error InvalidNumOfIntervals();
     error NothingToClaim();
     error ClaimCompleted();
     error UnauthorizedOperation();
@@ -35,7 +41,7 @@ contract LinearTokenVesting is Ownable {
 
 
     modifier isAdmin() {
-        // Checks that the calling account has the minter role
+        // Checks that the calling account has the admin role
         if (msg.sender != admin) {
             revert UnauthorizedAccount(msg.sender);
         }
@@ -43,16 +49,14 @@ contract LinearTokenVesting is Ownable {
     }
 
     /// @notice Smart contract constructor
-    /// @param _admin the account that has the rights to change the vesting parameters
+    /// @param _admin the account that has the rights to change the vesting parameters or the beneficiary
     /// @param _beneficiary the account that will receive the vested zen
     /// @param _timeBetweenClaims The minimum time in seconds that must be waited between claims
     /// @param _intervalsToClaim The number of vesting periods 
     constructor(address _admin, address _beneficiary, uint256 _timeBetweenClaims, uint256 _intervalsToClaim) Ownable(msg.sender) {
-        if(_timeBetweenClaims == 0) revert InvalidTimes();    
         _setBeneficiary(_beneficiary);
-        
-        timeBetweenClaims = _timeBetweenClaims;
-        intervalsToClaim = _intervalsToClaim;
+        _setVestingParams(_timeBetweenClaims, _intervalsToClaim);
+
         admin = _admin;
     }
 
@@ -105,9 +109,31 @@ contract LinearTokenVesting is Ownable {
     /// @param newBeneficiary Address of the new beneficiary
     function changeBeneficiary(address newBeneficiary) public isAdmin {
         if (intervalsAlreadyClaimed == intervalsToClaim) revert UnauthorizedOperation();
+        if (newBeneficiary == address(token)) revert TokenAndBeneficiaryCantBeTheSame();
+
         address oldBeneficiary = beneficiary;
         _setBeneficiary(newBeneficiary);
         emit ChangedBeneficiary(newBeneficiary, oldBeneficiary);
+    }
+
+    /// @notice Changes the number of vesting intervals and their duration. After this method has been called, the supply not claimed yet (i.e the balance of this contract) will be able to be claimed 
+    /// in a time equal to newTimeBetweenClaims * newNumberOfIntervalsToClaim. Note that the remaining supply includes the amounts already accrued but not claimed yet.
+    /// @param newTimeBetweenClaims New duration in seconds of a vesting interval
+    /// @param newNumberOfIntervalsToClaim Number of intervals that need to pass for vesting the remaining supply
+    function changeVestingParams(uint256 newTimeBetweenClaims, uint256 newNumberOfIntervalsToClaim) public isAdmin {
+        if (intervalsAlreadyClaimed == intervalsToClaim) revert UnauthorizedOperation();
+        uint256 oldTimeBetweenClaims = timeBetweenClaims;
+        uint256 oldNumberOfIntervalsToClaim = intervalsToClaim;
+        _setVestingParams(newTimeBetweenClaims, newNumberOfIntervalsToClaim);
+
+        // if startVesting was already called, startTimestamp, amountForEachClaim and intervalsAlreadyClaimed need to be reset
+        if (startTimestamp != 0){
+            uint256 totalToVest = token.balanceOf(address(this));
+            amountForEachClaim = totalToVest / intervalsToClaim;
+            startTimestamp = block.timestamp;
+            intervalsAlreadyClaimed = 0;
+        }
+        emit ChangedVestingParams(newTimeBetweenClaims, newNumberOfIntervalsToClaim, oldTimeBetweenClaims, oldNumberOfIntervalsToClaim);
     }
 
     function _min(uint256 a, uint256 b) internal pure returns(uint256) {
@@ -117,5 +143,13 @@ contract LinearTokenVesting is Ownable {
     function _setBeneficiary(address newBeneficiary) internal {
         if(newBeneficiary == address(0)) revert AddressParameterCantBeZero();
         beneficiary = newBeneficiary;
+    }
+
+    function _setVestingParams(uint256 newTimeBetweenClaims, uint256 newNumberOfIntervalsToClaim) internal {
+        if(newNumberOfIntervalsToClaim == 0) revert InvalidNumOfIntervals(); 
+        if(newTimeBetweenClaims == 0) revert InvalidTimes();
+
+        timeBetweenClaims = newTimeBetweenClaims;
+        intervalsToClaim = newNumberOfIntervalsToClaim;        
     }
 }
