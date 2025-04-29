@@ -12,10 +12,14 @@ describe("Migration Contracts Factory testing", function () {
   const tokenName = "NEZ"
   const tokenSymbol = "TNEZ"
   const base_message = "Tityre tu patulae recubans sub tegmine fagi"
+  let foundationAdmin;
+  let daoAdmin
 
   before(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(3);
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(4);
     admin = (await ethers.getSigners())[0];
+    foundationAdmin = (await ethers.getSigners())[2];
+    daoAdmin = (await ethers.getSigners())[3];
 
   });
 
@@ -34,9 +38,11 @@ describe("Migration Contracts Factory testing", function () {
 
   it("Create migration contracts", async function () {
 
-    let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, utils.HORIZEN_FOUNDATION);
-    const token = await ZenMigrationFactory.token()
 
+    let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, 
+        foundationAdmin, utils.HORIZEN_FOUNDATION, daoAdmin, utils.HORIZEN_DAO);
+
+    const token = await ZenMigrationFactory.token()
 
     expect(token).to.be.not.equal(utils.NULL_ADDRESS);
     const eonVault = await ZenMigrationFactory.eonVault();
@@ -44,15 +50,33 @@ describe("Migration Contracts Factory testing", function () {
     const zendVault = await ZenMigrationFactory.zendVault();
     expect(zendVault).to.be.not.equal(utils.NULL_ADDRESS);
 
-    await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated').withArgs(token, eonVault, zendVault);
+    const horizenFoundationVestingContract = await ZenMigrationFactory.horizenFoundationVestingContract();
+    expect(horizenFoundationVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
 
+    let vestingFoundation = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenFoundationVestingContract);
+    expect(await vestingFoundation.beneficiary()).to.be.equal(utils.HORIZEN_FOUNDATION);
+    expect(await vestingFoundation.admin()).to.be.equal(foundationAdmin);
+    expect(await vestingFoundation.timeBetweenClaims()).to.be.equal(utils.VESTING_TIME_BETWEEN_INTERVALS);
+    expect(await vestingFoundation.intervalsToClaim()).to.be.equal(utils.VESTING_INTERVALS);
+
+    const horizenDaoVestingContract = await ZenMigrationFactory.horizenDaoVestingContract();
+    expect(horizenDaoVestingContract).to.be.not.equal(utils.NULL_ADDRESS);
+
+    let vestingDAO = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenDaoVestingContract);
+    expect(await vestingDAO.beneficiary()).to.be.equal(utils.HORIZEN_DAO);
+    expect(await vestingDAO.admin()).to.be.equal(daoAdmin);
+    expect(await vestingDAO.timeBetweenClaims()).to.be.equal(utils.VESTING_TIME_BETWEEN_INTERVALS);
+    expect(await vestingDAO.intervalsToClaim()).to.be.equal(utils.VESTING_INTERVALS);
+
+    await expect(res).to.emit(ZenMigrationFactory, 'ZenMigrationContractsCreated')
+    .withArgs(token, eonVault, zendVault, horizenFoundationVestingContract, horizenDaoVestingContract);
   });
 
 
   it("Check token contract", async function () {
     let token = await ZenMigrationFactory.token();
     let ZENToken = await hre.ethers.getContractAt(utils.ZEN_TOKEN_CONTRACT_NAME, token);
-    expect(await ZENToken.horizenFoundation()).to.be.equal(utils.HORIZEN_FOUNDATION);
+
     expect(await ZENToken.name()).to.be.equal(tokenName);
     expect(await ZENToken.symbol()).to.be.equal(tokenSymbol);
 
@@ -71,7 +95,9 @@ describe("Migration Contracts Factory testing", function () {
     let tokenName = "FOO"
     let tokenSymbol = "FOO"
 
-    await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, utils.HORIZEN_FOUNDATION)).to.be.revertedWithCustomError(ZenMigrationFactory, "TokenAlreadyExists");
+    await expect(ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, 
+      foundationAdmin, utils.HORIZEN_FOUNDATION, daoAdmin, utils.HORIZEN_DAO
+    )).to.be.revertedWithCustomError(ZenMigrationFactory, "ContractsAlreadyDeployed");
   });
 
 
