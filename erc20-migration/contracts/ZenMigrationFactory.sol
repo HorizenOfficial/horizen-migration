@@ -35,15 +35,18 @@ contract ZenMigrationFactory is Ownable {
     /// @param tokenName Name of the token
     /// @param tokenSymbol Token ticker
     /// @param base_claim_message One of the parts of the message to sign for zen claim
-    /// @param horizenFoundation Address who will receive the remaining portion of Zen reserved to the Foundation 
-    /// @param horizenDao Address who will receive the remaining portion of Zen reserved to the DAO 
+    /// @param horizenFoundationAdmin The account that has the rights to change the vesting parameters for the Foundation
+    /// @param horizenFoundationBeneficiary Address who will receive the remaining portion of Zen reserved to the Foundation
+    /// @param horizenDaoAdmin The account that has the rights to change the vesting parameters for the DAO 
+    /// @param horizenDaoBeneficiary Address who will receive the remaining portion of Zen reserved to the DAO 
     function deployMigrationContracts(
         string memory tokenName,
         string memory tokenSymbol,
         string memory base_claim_message,
-        address horizenFoundation,
-        address horizenDao
-
+        address horizenFoundationAdmin,
+        address horizenFoundationBeneficiary,
+        address horizenDaoAdmin,
+        address horizenDaoBeneficiary
     ) public onlyOwner {
         if (address(token) != address(0)) {
             revert ContractsAlreadyDeployed();
@@ -52,8 +55,8 @@ contract ZenMigrationFactory is Ownable {
         eonVault = new EONBackupVault(address(this));
         zendVault = new ZendBackupVault(address(this), base_claim_message);
 
-        horizenFoundationVestingContract = new LinearTokenVesting(horizenFoundation, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
-        horizenDaoVestingContract = new LinearTokenVesting(horizenDao, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
+        horizenFoundationVestingContract = new LinearTokenVesting(horizenFoundationAdmin, horizenFoundationBeneficiary, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
+        horizenDaoVestingContract = new LinearTokenVesting(horizenDaoAdmin, horizenDaoBeneficiary, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
 
         token = new ZenToken(
             tokenName,

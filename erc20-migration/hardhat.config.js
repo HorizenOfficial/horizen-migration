@@ -124,8 +124,16 @@ task("hashZEND", "Calculates the final hash for ZEND accounts", async (taskArgs,
 task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
   console.log("Deploying migration factory contracts");
+  if (process.env.HORIZEN_FOUNDATION_ADMIN == null) {
+    console.error("HORIZEN_FOUNDATION_ADMIN environment variable not set: missing HORIZEN Foundation admin account address. Exiting.");
+    exit(-1);
+  }
   if (process.env.HORIZEN_FOUNDATION == null) {
     console.error("HORIZEN_FOUNDATION environment variable not set: missing HORIZEN Foundation account address. Exiting.");
+    exit(-1);
+  }
+  if (process.env.HORIZEN_DAO_ADMIN == null) {
+    console.error("HORIZEN_DAO_ADMIN environment variable not set: missing HORIZEN DAO admin account address. Exiting.");
     exit(-1);
   }
   if (process.env.HORIZEN_DAO == null) {
@@ -149,7 +157,15 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   let tokenName = "ZEN"
   let tokenSymbol = "ZEN"
   let base_message = "CLAIM"
-  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, process.env.HORIZEN_FOUNDATION, process.env.HORIZEN_DAO);    
+  let res = await ZenMigrationFactory.deployMigrationContracts(
+                                                                tokenName, 
+                                                                tokenSymbol, 
+                                                                base_message, 
+                                                                process.env.HORIZEN_FOUNDATION_ADMIN, 
+                                                                process.env.HORIZEN_FOUNDATION, 
+                                                                process.env.HORIZEN_DAO_ADMIN, 
+                                                                process.env.HORIZEN_DAO
+                                                              );    
 
   receipt = await res.wait();
   if (receipt.status == 0) {
