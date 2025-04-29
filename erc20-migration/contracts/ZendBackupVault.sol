@@ -50,6 +50,7 @@ contract ZendBackupVault is Ownable {
     error InsufficientSignatures(uint256 number, uint256 required);
     error InvalidSignatureArrayLength();
     error InvalidPublicKeysArraysLength();
+    error TooManySignatures();
     error InvalidScriptLength();
     error InvalidPublicKeySize(uint256 size);
     error UnexpectedZeroPublicKey(PubKey);
@@ -175,12 +176,14 @@ contract ZendBackupVault is Ownable {
     ///         (zenAddress is the string representation with 0x prefix )
     function claimP2SH(address destAddress, bytes[] calldata hexSignatures, bytes memory script, PubKey[] calldata pubKeys) public canClaim(destAddress) {
         if(hexSignatures.length != pubKeys.length) revert InvalidSignatureArrayLength(); //check method doc
+        if(hexSignatures.length > 16) revert TooManySignatures(); //ZEND multisig scripts support up to 16 signatures
 
-        uint256 minSignatures = uint256(uint8(script[0])) - 80;
-        _verifyPubKeysFromScript(script, pubKeys);
         bytes20 zenAddress = _extractZenAddressFromScript(script);
         //check amount to claim
         if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
+        uint256 minSignatures = uint256(uint8(script[0])) - 80;
+
+        _verifyPubKeysFromScript(script, pubKeys);
 
         //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
         string memory destAddressAsString = Strings.toChecksumHexString(destAddress);
