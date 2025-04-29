@@ -13,10 +13,12 @@ describe("Vesting test", function () {
   let AMOUNT_EACH_CLAIM = 10;
   let VESTING_AMOUNT = AMOUNT_EACH_CLAIM * INTERVALS_TO_CLAIM + 1;
   let startTimestamp;
+  let vestingAdmin;
 
   beforeEach(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(1);
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(2);
     beneficiary = (await ethers.getSigners())[0].address;
+    vestingAdmin = (await ethers.getSigners())[1];
 
     //deploy erc20 mock
     let ERC20Mock = await ethers.getContractFactory("ERC20Mock"); 
@@ -26,7 +28,7 @@ describe("Vesting test", function () {
     //deploy vesting contract
     startTimestamp = await time.latest() + 10;
     factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
-    vesting = await factory.deploy(beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    vesting = await factory.deploy(vestingAdmin.address, beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
 
     //set ERC-20

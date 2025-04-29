@@ -124,8 +124,16 @@ task("hashZEND", "Calculates the final hash for ZEND accounts", async (taskArgs,
 task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
 
   console.log("Deploying migration factory contracts");
+  if (process.env.HORIZEN_FOUNDATION_ADMIN == null) {
+    console.error("HORIZEN_FOUNDATION_ADMIN environment variable not set: missing HORIZEN Foundation admin account address. Exiting.");
+    exit(-1);
+  }
   if (process.env.HORIZEN_FOUNDATION == null) {
     console.error("HORIZEN_FOUNDATION environment variable not set: missing HORIZEN Foundation account address. Exiting.");
+    exit(-1);
+  }
+  if (process.env.HORIZEN_DAO_ADMIN == null) {
+    console.error("HORIZEN_DAO_ADMIN environment variable not set: missing HORIZEN DAO admin account address. Exiting.");
     exit(-1);
   }
   if (process.env.HORIZEN_DAO == null) {
@@ -146,10 +154,19 @@ task("contractSetup", "To be used just for testing", async (taskArgs, hre) => {
   console.log(`Migration factory contract deployed at: ${ZenMigrationFactory.target}`);
 
 
-  let tokenName = "ZEN"
-  let tokenSymbol = "ZEN"
-  let base_message = "CLAIM"
-  let res = await ZenMigrationFactory.deployMigrationContracts(tokenName, tokenSymbol, base_message, process.env.HORIZEN_FOUNDATION, process.env.HORIZEN_DAO);    
+
+  let tokenName = process.env.TOKEN_NAME || "ZEN"
+  let tokenSymbol = process.env.TOKEN_SYMBOL || "ZEN"
+  let base_message = process.env.BASE_MESSAGE || "CLAIM"
+  let res = await ZenMigrationFactory.deployMigrationContracts(
+                                                                tokenName, 
+                                                                tokenSymbol, 
+                                                                base_message, 
+                                                                process.env.HORIZEN_FOUNDATION_ADMIN, 
+                                                                process.env.HORIZEN_FOUNDATION, 
+                                                                process.env.HORIZEN_DAO_ADMIN, 
+                                                                process.env.HORIZEN_DAO
+                                                              );    
 
   receipt = await res.wait();
   if (receipt.status == 0) {
@@ -235,16 +252,18 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   const BATCH_LENGTH = 500;
   let addressesValues = [];
   let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  let batchNumber = 0;
+  let batchNumber = 1;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
-
+  let totalBatchNumber = Math.ceil(accounts.length/BATCH_LENGTH);
+  
   for (const [address, balance] of accounts) {
     totalBalance = totalBalance + BigInt(balance);
     addressesValues.push({ addr: address, value: balance });
     calcCumulativeHash = updateEONCumulativeHash(calcCumulativeHash, address, balance);
+
     if (addressesValues.length == BATCH_LENGTH) {
-      console.log("Inserting batch: " + batchNumber);
+      console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
       try {
         let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues);
         let receipt = await res.wait();
@@ -256,7 +275,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
           exit(-1);
         }
         else {
-          console.log("Inserted batch " + batchNumber);
+          console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
         }
       }
       catch (error) {
@@ -268,8 +287,9 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
       addressesValues = [];
     }
   }
+
   if (addressesValues.length > 0) {
-    console.log("Inserting last batch, number: " + batchNumber);
+    console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
     try {
       let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues);
       let receipt = await res.wait();
@@ -281,7 +301,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
         exit(-1);
       }
       else {
-        console.log("Inserted last batch: " + batchNumber);
+        console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
       }
     }
     catch (error) {
@@ -322,16 +342,22 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
     }
     round++;
   }
+});
 
-  //check distributed balances
-  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
+task("checkDistributedEON", "Checks distributed EON tokens", async(taskArgs, hre) => {
 
   console.log("\n\n***************************************************************");
   console.log("                 Checking distributed tokens");
   console.log("***************************************************************\n");
+
+  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
+  const accounts = loadAccountsFromFile(process.env.EON_FILE);
   let mismatch_messages = [];
+  let totalBalance = BigInt(0);
   let count = 1;
+
   for (const [address, balance] of accounts) {
+    totalBalance = totalBalance + BigInt(balance);
     const progressPercentage = Math.floor(count / accounts.length * 100);
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
@@ -402,16 +428,18 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   const BATCH_LENGTH = 500;
   let addressesValues = [];
   let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  let batchNumber = 0;
+  let batchNumber = 1;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
+  let totalBatchNumber = Math.ceil(accounts.length/BATCH_LENGTH);
 
   for (const [address, balance] of accounts) {
     totalBalance = totalBalance + BigInt(balance);
     addressesValues.push({ addr: address, value: balance });
     calcCumulativeHash = updateZENDCumulativeHash(calcCumulativeHash, address, balance);
+
     if (addressesValues.length == BATCH_LENGTH) {
-      console.log("Inserting batch: " + batchNumber);
+      console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
       try {
         let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
         let receipt = await res.wait();
@@ -423,7 +451,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
           exit(-1);
         }
         else {
-          console.log("Inserted batch " + batchNumber);
+          console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
         }
       }
       catch (error) {
@@ -435,8 +463,9 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
       addressesValues = [];
     }
   }
+
   if (addressesValues.length > 0) {
-    console.log("Inserting last batch, number: " + batchNumber);
+    console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
     try {
       let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
       let receipt = await res.wait();
@@ -448,7 +477,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
         exit(-1);
       }
       else {
-        console.log("Inserted last batch: " + batchNumber);
+        console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
       }
     }
     catch (error) {
@@ -465,17 +494,22 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
     exit(-1);
   }
   console.log("Correct final hash reached");
-
   console.log("End loading accounts");
+});
 
-  //check restored balances
-
+task("checkDistributedZEND", "Checks distributed ZEND tokens", async(taskArgs, hre) => {
   console.log("\n\n***************************************************************");
   console.log("                 Checking restored balances");
   console.log("***************************************************************\n");
+
+  const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
+  const accounts = loadAccountsFromFile(process.env.ZEND_FILE);
   let mismatch_messages = [];
+  let totalBalance = BigInt(0);
   let count = 1;
+
   for (const [address, balance] of accounts) {
+    totalBalance = totalBalance + BigInt(balance);
     const progressPercentage = Math.floor(count / accounts.length * 100);
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
@@ -496,7 +530,6 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   console.log("***************************************************************");
   console.log("\nZEND Total Restored Balance: " + totalBalance);
 });
-
 
 task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
   if (process.env.TOKEN_ADDRESS == null) {
