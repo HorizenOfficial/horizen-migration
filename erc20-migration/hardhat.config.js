@@ -214,7 +214,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   const BATCH_LENGTH = 500;
   let addressesValues = [];
   let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  let batchNumber = 0;
+  let batchNumber = 1;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
   let totalBatchNumber = Math.ceil(accounts.length/BATCH_LENGTH);
@@ -306,6 +306,42 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   }
 });
 
+task("checkDistributedEON", "Checks distributed EON tokens", async(taskArgs, hre) => {
+
+  console.log("\n\n***************************************************************");
+  console.log("                 Checking distributed tokens");
+  console.log("***************************************************************\n");
+
+  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
+  const accounts = loadAccountsFromFile(process.env.EON_FILE);
+  let mismatch_messages = [];
+  let totalBalance = BigInt(0);
+  let count = 1;
+
+  for (const [address, balance] of accounts) {
+    totalBalance = totalBalance + BigInt(balance);
+    const progressPercentage = Math.floor(count / accounts.length * 100);
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(`Progress: ${progressPercentage}%`);
+    let currentBalance = await ZENToken.balanceOf(address);
+    if (currentBalance != balance) {
+      mismatch_messages.push("Balance of address " + address + " is different from expected - expected: " + balance + ", actual: " + currentBalance);
+    }
+    count++;
+  }
+
+  console.log("\n***************************************************************");
+  console.log("             Checking end. Mismatches found: " + mismatch_messages.length);
+  if (mismatch_messages.length > 0) {
+    for (msg of mismatch_messages)
+      console.log(msg);
+  }
+  console.log("***************************************************************");
+
+  console.log("\nEON Total Restored Balance: " + totalBalance);
+});
+
 task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
 
   if (process.env.ZEND_FILE == null) {
@@ -354,7 +390,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   const BATCH_LENGTH = 500;
   let addressesValues = [];
   let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  let batchNumber = 0;
+  let batchNumber = 1;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
   let totalBatchNumber = Math.ceil(accounts.length/BATCH_LENGTH);
@@ -423,23 +459,26 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   console.log("End loading accounts");
 });
 
-task("checkDistributed", "Checks distributed tokens", async(taskArgs, hre) => {
-  //check distributed balances
-  const ZENToken = await hre.ethers.getContractAt(ZEN_TOKEN_CONTRACT_NAME, process.env.TOKEN_ADDRESS);
-
+task("checkDistributedZEND", "Checks distributed ZEND tokens", async(taskArgs, hre) => {
   console.log("\n\n***************************************************************");
-  console.log("                 Checking distributed tokens");
+  console.log("                 Checking restored balances");
   console.log("***************************************************************\n");
+
+  const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
+  const accounts = loadAccountsFromFile(process.env.ZEND_FILE);
   let mismatch_messages = [];
+  let totalBalance = BigInt(0);
   let count = 1;
+
   for (const [address, balance] of accounts) {
+    totalBalance = totalBalance + BigInt(balance);
     const progressPercentage = Math.floor(count / accounts.length * 100);
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
     process.stdout.write(`Progress: ${progressPercentage}%`);
-    let currentBalance = await ZENToken.balanceOf(address);
+    let currentBalance = await ZENDVault.balances(address);
     if (currentBalance != balance) {
-      mismatch_messages.push("Balance of address " + address + " is different from expected - expected: " + balance + ", actual: " + currentBalance);
+      mismatch_messages.push("Balance of address " + address + " different from expected - expected: " + balance + ", actual: " + currentBalance);
     }
     count++;
   }
@@ -451,8 +490,7 @@ task("checkDistributed", "Checks distributed tokens", async(taskArgs, hre) => {
       console.log(msg);
   }
   console.log("***************************************************************");
-
-  console.log("\nEON Total Restored Balance: " + totalBalance);
+  console.log("\nZEND Total Restored Balance: " + totalBalance);
 });
 
 task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
