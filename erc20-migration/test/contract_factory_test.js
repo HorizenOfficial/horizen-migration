@@ -55,7 +55,7 @@ describe("Migration Contracts Factory testing", function () {
 
     let vestingFoundation = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenFoundationVestingContract);
     expect(await vestingFoundation.beneficiary()).to.be.equal(utils.HORIZEN_FOUNDATION);
-    expect(await vestingFoundation.admin()).to.be.equal(foundationAdmin);
+    expect(await vestingFoundation.owner()).to.be.equal(foundationAdmin);
     expect(await vestingFoundation.timeBetweenClaims()).to.be.equal(utils.VESTING_TIME_BETWEEN_INTERVALS);
     expect(await vestingFoundation.intervalsToClaim()).to.be.equal(utils.VESTING_INTERVALS);
 
@@ -64,7 +64,7 @@ describe("Migration Contracts Factory testing", function () {
 
     let vestingDAO = await hre.ethers.getContractAt(utils.VESTING_CONTRACT_NAME, horizenDaoVestingContract);
     expect(await vestingDAO.beneficiary()).to.be.equal(utils.HORIZEN_DAO);
-    expect(await vestingDAO.admin()).to.be.equal(daoAdmin);
+    expect(await vestingDAO.owner()).to.be.equal(daoAdmin);
     expect(await vestingDAO.timeBetweenClaims()).to.be.equal(utils.VESTING_TIME_BETWEEN_INTERVALS);
     expect(await vestingDAO.intervalsToClaim()).to.be.equal(utils.VESTING_INTERVALS);
 

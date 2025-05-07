@@ -39,7 +39,7 @@ describe("Vesting setup test", function () {
     //deploy vesting contract
     startTimestamp = await time.latest() + 10;
     factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
-    vesting = await factory.deploy(vestingAdmin.address, initialBeneficiary, INITIAL_TIME_BETWEEN_INTERVALS, INITIAL_INTERVALS_TO_CLAIM);
+    vesting = await factory.deploy(initialBeneficiary, INITIAL_TIME_BETWEEN_INTERVALS, INITIAL_INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
     
     expect(await vesting.token()).to.be.equal(utils.NULL_ADDRESS);
