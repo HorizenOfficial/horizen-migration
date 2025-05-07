@@ -3,10 +3,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IVesting.sol";
 
 /// @title LinearTokenVesting
 /// @notice This contract implements the vesting strategy for the remaining ZEN supply.  
-contract LinearTokenVesting is Ownable {
+contract LinearTokenVesting is Ownable, IVesting {
     
     uint8 private _allowedOwnershipTransfers = 2;
 

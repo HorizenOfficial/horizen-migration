@@ -3,13 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./LinearTokenVesting.sol";
+import "./interfaces/IVesting.sol";
+import "./interfaces/IZenToken.sol";
 
 /// @title ZEN official ERC-20 smart contract
 /// @notice Minting role is granted in the constructor to the Vault Contracts, responsible for
 ///         restoring EON and Zend balances.
 
-contract ZenToken is ERC20Capped {
+contract ZenToken is IZenToken, ERC20Capped {
     // Simple mapping to track authorized minters
     mapping(address => bool) public minters;
 
@@ -87,7 +88,7 @@ contract ZenToken is ERC20Capped {
             uint256 daoInitialSupply = (daoSupply * INITIAL_SUPPLY_PERCENTAGE) / 100;
             uint256 foundationInitialSupply = (foundationSupply * INITIAL_SUPPLY_PERCENTAGE) / 100;
             _mint(
-                LinearTokenVesting(horizenFoundationVested).beneficiary(),
+                IVesting(horizenFoundationVested).beneficiary(),
                 foundationInitialSupply
             );
             _mint(
@@ -95,13 +96,13 @@ contract ZenToken is ERC20Capped {
                 foundationSupply - foundationInitialSupply
             );
             _mint(
-                LinearTokenVesting(horizenDaoVested).beneficiary(),
+                IVesting(horizenDaoVested).beneficiary(),
                 daoInitialSupply
             );
             _mint(horizenDaoVested, daoSupply - daoInitialSupply);
 
-            LinearTokenVesting(horizenFoundationVested).startVesting();
-            LinearTokenVesting(horizenDaoVested).startVesting();
+            IVesting(horizenFoundationVested).startVesting();
+            IVesting(horizenDaoVested).startVesting();
         }
     }
 }
