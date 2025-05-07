@@ -260,12 +260,8 @@ contract ZendBackupVault is Ownable {
                 else { //in compressed case, we just check sign
                     uint8 sign;
                     assembly {
-                        let resultPtr := mload(0x40)
-                        let sourcePtr := add(script, 0x01)
-                        let offset := add(sourcePtr, pos) //sign is at first byte
-
-                        mstore(resultPtr, mload(offset))
-                        sign := mload(resultPtr)
+                        let offset := add(add(script, 0x20), pos) // data start + pos
+                        sign := byte(0, mload(offset))            // take the LS byte
                     }
                     uint8 ySign = VerificationLibrary.signByte(pubKeys[i].y);
                     if(sign != ySign) revert InvalidPublicKey(i, 1, bytes32(uint256(sign)), bytes32(uint256(ySign)));
