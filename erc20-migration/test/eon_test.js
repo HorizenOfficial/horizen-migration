@@ -83,9 +83,17 @@ describe("Token and EON Backup contract testing", function () {
     const receipt = await erc20.deploymentTransaction().wait(); // Wait for confirmation
   });
 
+  it("Call moreToDistribute() returns false if erc20 is not set", async function () {
+    expect(await EONBackupVault.moreToDistribute()).to.be.false;
+  }); 
+
   it("Set ERC-20 contract reference in the backup contract", async function () {
     var res = await EONBackupVault.setERC20(await erc20.getAddress());
   });
+
+  it("Call moreToDistribute() returns true if erc20 is set", async function () {
+    expect(await EONBackupVault.moreToDistribute()).to.be.true;
+  }); 
 
   it("Call distribute() and check distributed balances", async function () {
     var round = 0;

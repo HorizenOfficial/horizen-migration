@@ -112,8 +112,9 @@ contract EONBackupVault is Ownable {
 
     /// @notice Return true if admin is able to distribute more
     function moreToDistribute() public view  returns (bool) { 
-        return _cumulativeHash != bytes32(0) &&
-                _cumulativeHash == cumulativeHashCheckpoint && 
-                  nextRewardIndex <  addressList.length;
+        return (address(zenToken) != address(0)) && 
+               (_cumulativeHash != bytes32(0)) &&
+               _cumulativeHash == cumulativeHashCheckpoint && 
+               nextRewardIndex <  addressList.length;
     }
 }
