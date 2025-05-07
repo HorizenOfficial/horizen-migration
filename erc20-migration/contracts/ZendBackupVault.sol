@@ -57,7 +57,7 @@ contract ZendBackupVault is Ownable {
     error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
 
 
-    event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
+    event Claimed(address indexed claimer, address indexed destAddress, bytes20 zenAddress, uint256 amount);
 
     /// @notice verify if we are in the state in which users can already claim
     modifier canClaim(address destAddress) {
@@ -129,7 +129,7 @@ contract ZendBackupVault is Ownable {
         
         balances[zenAddress] = 0;
         zenToken.transfer(destAddress, amount);
-        emit Claimed(destAddress, zenAddress, amount);
+        emit Claimed(msg.sender, destAddress, zenAddress, amount);
     }
 
     /// @notice Claim a P2PKH balance.

@@ -19,8 +19,8 @@ contract LinearTokenVesting is Ownable {
     uint256 public intervalsToClaim;
     uint256 public intervalsAlreadyClaimed;
 
-    event Claimed(uint256 claimAmount, uint256 timestamp);
-    event ChangedBeneficiary(address newBeneficiary, address oldBeneficiary);
+    event Claimed(address indexed claimer, address indexed beneficiary, uint256 claimAmount, uint256 timestamp);
+    event ChangedBeneficiary(address indexed newBeneficiary, address indexed oldBeneficiary);
     event ChangedVestingParams(
                                 uint256 newTimeBetweenClaims, 
                                 uint256 newIntervalsToClaim, 
@@ -90,7 +90,7 @@ contract LinearTokenVesting is Ownable {
             amountToClaimNow = token.balanceOf(address(this));
         }
 
-        emit Claimed(amountToClaimNow, block.timestamp);
+        emit Claimed(msg.sender, beneficiary, amountToClaimNow, block.timestamp);
 
         token.transfer(beneficiary, amountToClaimNow);
     }
