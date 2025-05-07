@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./LinearTokenVesting.sol";
 
 /// @title ZEN official ERC-20 smart contract
@@ -15,12 +16,13 @@ contract ZenToken is ERC20Capped {
     uint256 internal constant TOTAL_ZEN_SUPPLY = 21_000_000;
     uint256 internal constant TOKEN_SIZE = 10 ** 18;
 
-    address public horizenFoundationVested;
+    address public immutable horizenFoundationVested;
+    address public immutable horizenDaoVested;
 
-    uint8 numOfMinters;
+    uint8 public numOfMinters;
 
-    address public horizenDaoVested;
-
+    uint256 public constant DAO_SUPPLY_PERCENTAGE = 60;
+    uint256 public constant INITIAL_SUPPLY_PERCENTAGE = 25;
 
     error AddressParameterCantBeZero(string paramName);
     error CallerNotMinter(address caller);
@@ -79,11 +81,11 @@ contract ZenToken is ERC20Capped {
         if (numOfMinters == 0) {
             uint256 remainingSupply = cap() - totalSupply();
             //Horizen DAO is eligible of 60% of the remaining supply. The rest is for the Foundation.
-            uint256 daoSupply = (remainingSupply * 6) / 10;
+            uint256 daoSupply = (remainingSupply * DAO_SUPPLY_PERCENTAGE) / 100;
             uint256 foundationSupply = remainingSupply - daoSupply;
 
-            uint256 daoInitialSupply = (daoSupply * 25) / 100;
-            uint256 foundationInitialSupply = (foundationSupply * 25) / 100;
+            uint256 daoInitialSupply = (daoSupply * INITIAL_SUPPLY_PERCENTAGE) / 100;
+            uint256 foundationInitialSupply = (foundationSupply * INITIAL_SUPPLY_PERCENTAGE) / 100;
             _mint(
                 LinearTokenVesting(horizenFoundationVested).beneficiary(),
                 foundationInitialSupply

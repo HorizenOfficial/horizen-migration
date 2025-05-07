@@ -25,7 +25,7 @@ library VerificationLibrary {
         bytes32 s;
         uint8 v = uint8(hexSignature[0]);
         assembly {       
-            r := mload(add(hexSignature, 33)) //  bytes 1-33
+            r := mload(add(hexSignature, 33)) //  bytes 1-32
             s := mload(add(hexSignature, 65)) // bytes 33-65 bytes
         }
         return Signature({r: r, s: s, v: v});

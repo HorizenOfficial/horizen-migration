@@ -6,7 +6,6 @@ import "./ZenToken.sol";
 import "./EONBackupVault.sol";
 import "./ZendBackupVault.sol";
 import "./LinearTokenVesting.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZenMigrationFactory

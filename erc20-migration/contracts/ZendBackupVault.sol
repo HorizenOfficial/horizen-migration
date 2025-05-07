@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {VerificationLibrary} from  './VerificationLibrary.sol';
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./VerificationLibrary.sol";
 import "./ZenToken.sol";
 
 /// @title ZendBackupVault
@@ -136,7 +137,7 @@ contract ZendBackupVault is Ownable {
     /// @param  destAddress is the receiver of the funds
     /// @param  hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
-    ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destination address in EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md) string)
+    ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destination address in EIP-55 format (https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md) string)
     /// @param  pubKey are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, PubKey calldata pubKey) public canClaim(destAddress) {
