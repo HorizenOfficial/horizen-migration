@@ -193,7 +193,7 @@ describe("ZEND Claim test", function () {
   });
 
   it("Check that ZendVault cannot mint anymore", async function () {
-    expect(await erc20.hasRole(await erc20.MINTER_ROLE(), await ZendBackupVault.getAddress())).to.be.false;
+    expect(await erc20.minters(await ZendBackupVault.getAddress())).to.be.false;
   });
 
   it("Claim of a P2PKH uncompressed", async function () {

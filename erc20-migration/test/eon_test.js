@@ -114,7 +114,7 @@ describe("Token and EON Backup contract testing", function () {
   });
 
   it("If we have distributed everything, EONVault cannot mint anymore", async function () {
-    expect(await erc20.hasRole(await erc20.MINTER_ROLE(), await EONBackupVault.getAddress())).to.be.false;
+    expect(await erc20.minters(await EONBackupVault.getAddress())).to.be.false;
   });
 
 });
