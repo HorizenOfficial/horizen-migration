@@ -4,13 +4,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IVesting.sol";
-import "./interfaces/IZenToken.sol";
 
 /// @title ZEN official ERC-20 smart contract
 /// @notice Minting role is granted in the constructor to the Vault Contracts, responsible for
 ///         restoring EON and Zend balances.
 
-contract ZenToken is IZenToken, ERC20Capped {
+contract ZenToken is ERC20Capped {
     // Simple mapping to track authorized minters
     mapping(address => bool) public minters;
 

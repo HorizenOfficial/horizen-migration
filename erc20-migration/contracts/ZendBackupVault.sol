@@ -5,7 +5,7 @@ import {VerificationLibrary} from  './VerificationLibrary.sol';
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./VerificationLibrary.sol";
-import "./ZenToken.sol";
+import "./interfaces/IZenToken.sol";
 
 /// @title ZendBackupVault
 /// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, it allows manual claiming in the new chain.
@@ -35,7 +35,7 @@ contract ZendBackupVault is Ownable {
     // Final expected Cumulative Hash, used for checkpoint, to unlock claim
     bytes32 public cumulativeHashCheckpoint;
 
-    ZenToken public zenToken;
+    IZenToken public zenToken;
 
     string private MESSAGE_CONSTANT;
     /// First part of the message to sign, needed for zen claim operation. It is composed by the token symbol + MESSAGE_CONSTANT
@@ -119,7 +119,7 @@ contract ZendBackupVault is Ownable {
     function setERC20(address addr) public onlyOwner {
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
-        zenToken = ZenToken(addr);
+        zenToken = IZenToken(addr);
         message_prefix = string(abi.encodePacked(zenToken.symbol(), MESSAGE_CONSTANT));
 
     }
