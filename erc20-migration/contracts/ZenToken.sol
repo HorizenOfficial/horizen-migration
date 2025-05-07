@@ -19,7 +19,7 @@ contract ZenToken is ERC20Capped {
     address public immutable horizenFoundationVested;
     address public immutable horizenDaoVested;
 
-    uint8 public numOfMinters;
+    uint8 private numOfMinters;
 
     uint256 public constant DAO_SUPPLY_PERCENTAGE = 60;
     uint256 public constant INITIAL_SUPPLY_PERCENTAGE = 25;
