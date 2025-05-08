@@ -51,7 +51,6 @@ contract ZendBackupVault is Ownable {
     error InsufficientSignatures(uint256 number, uint256 required);
     error InvalidSignatureArrayLength();
     error InvalidPublicKeysArraysLength();
-    error InvalidSignature();
     error TooManySignatures();
     error InvalidScriptLength();
     error InvalidPublicKeySize(uint256 size);
@@ -143,11 +142,6 @@ contract ZendBackupVault is Ownable {
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, PubKey calldata pubKey) public canClaim(destAddress) {
         VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignature);
-
-        // Rejects the “high-s” twin ( s′ = n − s ) that signs the very same message, to avoid S-malleability issues
-        if (uint256(signature.s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0)
-            revert InvalidSignature();
-
         bytes20 zenAddress;
         if (signature.v == 31 || signature.v == 32){
             //signature was compressed, also the zen address will be from the compressed format
@@ -207,10 +201,7 @@ contract ZendBackupVault is Ownable {
                 else {
                     VerificationLibrary.Signature memory signature = VerificationLibrary.parseZendSignature(hexSignatures[i]);
                     //check doc: we suppose the signature in i position belonging to the pub key in i position in the script
-                    //we also reject the “high-s” twin ( s′ = n − s ) that signs the very same message, to avoid S-malleability issues
-                    if ((uint256(signature.s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) &&
-                          VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeys[i].x, pubKeys[i].y))
-                     {
+                    if(VerificationLibrary.verifyZendSignatureBool(messageHash, signature, pubKeys[i].x, pubKeys[i].y)) {
                         unchecked { ++validSignatures; }
                     }
                 }
