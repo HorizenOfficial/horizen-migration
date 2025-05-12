@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 import {VerificationLibrary} from  './VerificationLibrary.sol';
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ZenToken.sol";
+import "./VerificationLibrary.sol";
+import "./interfaces/IZenToken.sol";
 
 /// @title ZendBackupVault
 /// @notice This contract is used to store balances from old ZEND Mainchain, and, once all are loaded, it allows manual claiming in the new chain.
@@ -34,7 +35,7 @@ contract ZendBackupVault is Ownable {
     // Final expected Cumulative Hash, used for checkpoint, to unlock claim
     bytes32 public cumulativeHashCheckpoint;
 
-    ZenToken public zenToken;
+    IZenToken public zenToken;
 
     string private MESSAGE_CONSTANT;
     /// First part of the message to sign, needed for zen claim operation. It is composed by the token symbol + MESSAGE_CONSTANT
@@ -57,7 +58,7 @@ contract ZendBackupVault is Ownable {
     error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
 
 
-    event Claimed(address destAddress, bytes20 zenAddress, uint256 amount);
+    event Claimed(address indexed claimer, address indexed destAddress, bytes20 zenAddress, uint256 amount);
 
     /// @notice verify if we are in the state in which users can already claim
     modifier canClaim(address destAddress) {
@@ -118,7 +119,7 @@ contract ZendBackupVault is Ownable {
     function setERC20(address addr) public onlyOwner {
         if (address(zenToken) != address(0)) revert UnauthorizedOperation();  //ERC-20 address already set
         if(addr == address(0)) revert AddressNotValid();
-        zenToken = ZenToken(addr);
+        zenToken = IZenToken(addr);
         message_prefix = string(abi.encodePacked(zenToken.symbol(), MESSAGE_CONSTANT));
 
     }
@@ -129,14 +130,14 @@ contract ZendBackupVault is Ownable {
         
         balances[zenAddress] = 0;
         zenToken.transfer(destAddress, amount);
-        emit Claimed(destAddress, zenAddress, amount);
+        emit Claimed(msg.sender, destAddress, zenAddress, amount);
     }
 
     /// @notice Claim a P2PKH balance.
     /// @param  destAddress is the receiver of the funds
     /// @param  hexSignature is the signature of the claiming message. Must be generated in a compressed format to claim a zend address
     ///         generated with the public key in compressed format, or uncompressed otherwise.
-    ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destination address in EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md) string)
+    ///         (Claiming message is predefined and composed by the concatenation of the message_prefix (token symbol + MESSAGE_CONSTANT) and the destination address in EIP-55 format (https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md) string)
     /// @param  pubKey are the first 32 bytes and second 32 bytes of the signing key (we use always the uncompressed format here)
     ///         Note: we pass the pubkey explicitly because the extraction from the signature would be GAS expensive.
     function claimP2PKH(address destAddress, bytes memory hexSignature, PubKey calldata pubKey) public canClaim(destAddress) {
@@ -260,12 +261,8 @@ contract ZendBackupVault is Ownable {
                 else { //in compressed case, we just check sign
                     uint8 sign;
                     assembly {
-                        let resultPtr := mload(0x40)
-                        let sourcePtr := add(script, 0x01)
-                        let offset := add(sourcePtr, pos) //sign is at first byte
-
-                        mstore(resultPtr, mload(offset))
-                        sign := mload(resultPtr)
+                        let offset := add(add(script, 0x20), pos) // data start + pos
+                        sign := byte(0, mload(offset))            // take the LS byte
                     }
                     uint8 ySign = VerificationLibrary.signByte(pubKeys[i].y);
                     if(sign != ySign) revert InvalidPublicKey(i, 1, bytes32(uint256(sign)), bytes32(uint256(ySign)));

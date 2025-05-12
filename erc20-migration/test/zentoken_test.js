@@ -26,7 +26,6 @@ describe("ZEN Token contract testing", function () {
     minter_2 = (await ethers.getSigners())[1];
     horizenFoundation = (await ethers.getSigners())[2];
     horizenDao = (await ethers.getSigners())[3];
-    horizenAdmin = (await ethers.getSigners())[4];
   });
 
 
@@ -35,10 +34,10 @@ describe("ZEN Token contract testing", function () {
 
 //Deployment vesting contracts
     let factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
-    horizenFoundationVested = await factory.deploy(horizenAdmin, horizenFoundation, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    horizenFoundationVested = await factory.deploy(horizenFoundation, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await horizenFoundationVested.deploymentTransaction().wait();
 
-    horizenDaoVested = await factory.deploy(horizenAdmin, horizenDao, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    horizenDaoVested = await factory.deploy(horizenDao, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await horizenDaoVested.deploymentTransaction().wait();
 
     factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
