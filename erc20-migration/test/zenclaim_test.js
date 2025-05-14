@@ -101,7 +101,7 @@ describe("ZEND Claim test", function () {
 
     TEST_DIRECT_BASE_ADDRESS = "0x6ebacd4a2a48728e98aAAA101C59f2e0c57fA987";
     var prefix = '2089'
-    //calculate correspondant zend address and load direct value
+    //calculate correspondant zend address
     var directZENDTransferAddress = bs58check.encode(
       Buffer.from(
         prefix +
