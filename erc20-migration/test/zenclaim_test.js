@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const web3 = require("web3");
 var zencashjs = require('zencashjs')
 var bs58check = require('bs58check')
+const createHash = require('create-hash')
 const utils = require("./utils");
 
 describe("ZEND Claim test", function () {
@@ -48,6 +49,10 @@ describe("ZEND Claim test", function () {
 
   var TOTAL_ZEND_BALANCE = TEST1_VALUE + TEST2_VALUE + TEST4_VALUE;
 
+  var TEST_DIRECT_BASE_ADDRESS;
+  var TEST_DIRECT_ZEND_ADDRESS;
+  var TEST_DIRECT_VALUE = 95105;
+
   const MOCK_EMPTY_ADDRESS = "0x0000000000000000000000000000000000000001";
 
   before(async function () {
@@ -93,6 +98,21 @@ describe("ZEND Claim test", function () {
     var pubKey4 = zencashjs.address.privKeyToPubKey(privKey4, false) // generate uncompressed pubKey  
     var zAddr4 = zencashjs.address.pubKeyToAddr(pubKey4);
     TEST4_ZEND_ADDRESS = "0x" + bs58check.decode(zAddr4).toString("hex").slice(4); //remove the chain prefix
+
+    TEST_DIRECT_BASE_ADDRESS = "0x6ebacd4a2a48728e98aAAA101C59f2e0c57fA987";
+    var prefix = '2089'
+    //calculate correspondant zend address and load direct value
+    var directZENDTransferAddress = bs58check.encode(
+      Buffer.from(
+        prefix +
+        createHash('rmd160').update(
+          createHash('sha256').update(
+            Buffer.from(TEST_DIRECT_BASE_ADDRESS.substring(2), 'hex')
+          ).digest()
+        ).digest('hex'),
+      'hex')
+    )
+    TEST_DIRECT_ZEND_ADDRESS = "0x" + bs58check.decode(directZENDTransferAddress).toString("hex").slice(4); //remove the chain prefix
   });
 
   function updateCumulativeHash(previousHash, address, value) {
@@ -251,12 +271,12 @@ describe("ZEND Claim test", function () {
     return ZendBackupVaultMultisig;
   }
 
-  async function _checkMultisigBalance(ZendBackupVaultMultisig) {
-    let erc20Address = await ZendBackupVaultMultisig.zenToken();
+  async function _checkBalance(vault, address, value) {
+    let erc20Address = await vault.zenToken();
     let factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
     let token = await factory.attach(erc20Address);
-    let balance = await token.balanceOf(TEST_MULTISIG_DESTINATION_ADDRESS);
-    expect(balance).to.equal(TEST_MULTISIG_VALUE);
+    let balance = await token.balanceOf(address);
+    expect(balance).to.equal(value);
   }
 
   it("Multisig test - claim with signature 1 and 2", async function () {
@@ -265,7 +285,7 @@ describe("ZEND Claim test", function () {
     let pubKeys = [TEST1_PUBLICKEY, TEST2_PUBLICKEY, ZERO_PUBLICKEY];
     
     await ZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeys);
-    await _checkMultisigBalance(ZendBackupVaultMultisig);
+    await _checkBalance(ZendBackupVaultMultisig, TEST_MULTISIG_DESTINATION_ADDRESS, TEST_MULTISIG_VALUE);
   });
 
   it("Multisig test - claim with signature 1 and 3", async function () {
@@ -274,7 +294,7 @@ describe("ZEND Claim test", function () {
     let pubKeys = [TEST1_PUBLICKEY, ZERO_PUBLICKEY, TEST3_PUBLICKEY];
 
     await ZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeys);
-    await _checkMultisigBalance(ZendBackupVaultMultisig);
+    await _checkBalance(ZendBackupVaultMultisig, TEST_MULTISIG_DESTINATION_ADDRESS, TEST_MULTISIG_VALUE);
   });
 
   it("Multisig test - claim with signature 2 and 3", async function () {
@@ -283,7 +303,7 @@ describe("ZEND Claim test", function () {
     let pubKeys = [ZERO_PUBLICKEY, TEST2_PUBLICKEY, TEST3_PUBLICKEY];
     
     await ZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeys);
-    await _checkMultisigBalance(ZendBackupVaultMultisig);
+    await _checkBalance(ZendBackupVaultMultisig, TEST_MULTISIG_DESTINATION_ADDRESS, TEST_MULTISIG_VALUE);
   });
 
   it("Multisig test - claim fails with not enough signatures", async function () {
@@ -342,4 +362,50 @@ describe("ZEND Claim test", function () {
     await expect( ZendBackupVaultMultisig.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_MULTISIG_SCRIPT, pubKeys))
       .to.be.revertedWithCustomError(ZendBackupVaultMultisig, "CumulativeHashCheckpointNotSet")
   });
-});
+
+  //DIRECT TEST
+  async function _deployContractForDirectTests() {
+    if(!admin) admin = (await ethers.getSigners())[0];
+    var factory = await ethers.getContractFactory(utils.ZEND_VAULT_CONTRACT_NAME);    
+    var ZendBackupVaultDirect = await factory.deploy(admin, BASE_MESSAGE_PREFIX);
+
+    var factory = await ethers.getContractFactory(utils.ZEN_TOKEN_CONTRACT_NAME);
+
+    erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, 
+      MOCK_EMPTY_ADDRESS, await ZendBackupVaultDirect.getAddress(), MOCK_EMPTY_ADDRESS, MOCK_EMPTY_ADDRESS);
+    console.log(await ZendBackupVaultDirect.getAddress());
+    await ZendBackupVaultDirect.setERC20(await erc20.getAddress()); 
+   
+    //load data for direct test
+    var dumpRecursiveHash = ZERO_BYTES32;
+    dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST_DIRECT_ZEND_ADDRESS, TEST_DIRECT_VALUE);
+    await ZendBackupVaultDirect.setCumulativeHashCheckpoint(dumpRecursiveHash); 
+
+    let addressesValues = [{addr: TEST_DIRECT_ZEND_ADDRESS, value: TEST_DIRECT_VALUE}];
+    await ZendBackupVaultDirect.batchInsert(dumpRecursiveHash, addressesValues); 
+
+    return ZendBackupVaultDirect;
+  }
+
+  it("Direct test - positive claim", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests(true);
+    
+    await ZendBackupVaultDirect.claimDirect(TEST_DIRECT_BASE_ADDRESS);
+    await _checkBalance(ZendBackupVaultDirect, TEST_DIRECT_BASE_ADDRESS, TEST_DIRECT_VALUE);
+  });
+
+  it("Direct test - double claim fails the second time", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests(true);
+    
+    //legit claim
+    await ZendBackupVaultDirect.claimDirect(TEST_DIRECT_BASE_ADDRESS);
+    //double claim
+    await expect(ZendBackupVaultDirect.claimDirect(TEST_DIRECT_BASE_ADDRESS)).to.be.revertedWithCustomError(ZendBackupVaultDirect, "NothingToClaim");
+  });
+
+  it("Direct test - fails if nothing to claim", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests(true);
+    
+    let notDirectAddress = TEST_MULTISIG_DESTINATION_ADDRESS;
+    await expect(ZendBackupVaultDirect.claimDirect(notDirectAddress)).to.be.revertedWithCustomError(ZendBackupVaultDirect, "NothingToClaim");
+  });});

@@ -161,6 +161,19 @@ contract ZendBackupVault is Ownable {
 
         _claim(destAddress, zenAddress);
     }
+
+    /// @notice Direct claim a P2PKH balance without signing message
+    /// @param  baseDestAddress is the receiver of the funds. The zend address will be calculated from this one. Check documentation for details.
+    function claimDirect(address baseDestAddress) public canClaim(baseDestAddress) {
+        bytes memory addressToBytes = abi.encodePacked(baseDestAddress);
+        bytes20 zenAddress = _extractZenAddressFromScriptOrDestAddress(addressToBytes);
+
+        //check amount to claim
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
+
+        _claim(baseDestAddress, zenAddress);
+    }
     
     /// @notice Claim a P2SH balance.
     ///         destAddress is the receiver of the funds
@@ -179,7 +192,7 @@ contract ZendBackupVault is Ownable {
         if(hexSignatures.length != pubKeys.length) revert InvalidSignatureArrayLength(); //check method doc
         if(hexSignatures.length > 16) revert TooManySignatures(); //ZEND multisig scripts support up to 16 signatures
 
-        bytes20 zenAddress = _extractZenAddressFromScript(script);
+        bytes20 zenAddress = _extractZenAddressFromScriptOrDestAddress(script);
         //check amount to claim
         if (balances[zenAddress] == 0) revert NothingToClaim(zenAddress);
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
@@ -274,8 +287,8 @@ contract ZendBackupVault is Ownable {
         }
     }
 
-    /// @notice extract zen address from multisignature script
-    function _extractZenAddressFromScript(bytes memory script) internal pure returns(bytes20) {
+    /// @notice extract zen address from multisignature script or address (direct claim)
+    function _extractZenAddressFromScriptOrDestAddress(bytes memory script) internal pure returns(bytes20) {
         bytes32 scriptHash = sha256(script);
         scriptHash = ripemd160(abi.encode(scriptHash));
         return bytes20(scriptHash); 
