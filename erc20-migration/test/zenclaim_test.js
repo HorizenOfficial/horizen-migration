@@ -53,6 +53,10 @@ describe("ZEND Claim test", function () {
   var TEST_DIRECT_ZEND_ADDRESS;
   var TEST_DIRECT_VALUE = 95105;
 
+  var TEST_DIRECT_MULTISIG_SCRIPT;
+  var TEST_DIRECT_MULTISIG_ADDRESS;
+  var TEST_DIRECT_MULTISIG_VALUE = 10595;
+
   const MOCK_EMPTY_ADDRESS = "0x0000000000000000000000000000000000000001";
 
   before(async function () {
@@ -99,6 +103,7 @@ describe("ZEND Claim test", function () {
     var zAddr4 = zencashjs.address.pubKeyToAddr(pubKey4);
     TEST4_ZEND_ADDRESS = "0x" + bs58check.decode(zAddr4).toString("hex").slice(4); //remove the chain prefix
 
+    //direct case
     TEST_DIRECT_BASE_ADDRESS = "0x6ebacd4a2a48728e98aAAA101C59f2e0c57fA987";
     var prefix = '2089'
     //calculate correspondant zend address
@@ -113,6 +118,12 @@ describe("ZEND Claim test", function () {
       'hex')
     )
     TEST_DIRECT_ZEND_ADDRESS = "0x" + bs58check.decode(directZENDTransferAddress).toString("hex").slice(4); //remove the chain prefix
+
+    //direct multisig case
+    var testDirectMultisigPubKey2 = "02000000000000000000000000"+TEST_DIRECT_BASE_ADDRESS.substring(2);
+    TEST_DIRECT_MULTISIG_SCRIPT = zencashjs.address.mkMultiSigRedeemScript([pubKey1, testDirectMultisigPubKey2], 1, 2);
+    var zenDirectMultisigAddress = zencashjs.address.multiSigRSToAddress(TEST_DIRECT_MULTISIG_SCRIPT); 
+    TEST_DIRECT_MULTISIG_ADDRESS = "0x"+bs58check.decode(zenDirectMultisigAddress).toString("hex").slice(4); //remove the chain prefix
   });
 
   function updateCumulativeHash(previousHash, address, value) {
@@ -256,7 +267,6 @@ describe("ZEND Claim test", function () {
     
     erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, 
       MOCK_EMPTY_ADDRESS, await ZendBackupVaultMultisig.getAddress(), MOCK_EMPTY_ADDRESS, MOCK_EMPTY_ADDRESS);
-    console.log(await ZendBackupVaultMultisig.getAddress());
     await ZendBackupVaultMultisig.setERC20(await erc20.getAddress());    
   
     if(shouldInsertMultisigBalance) {
@@ -364,7 +374,7 @@ describe("ZEND Claim test", function () {
   });
 
   //DIRECT TEST
-  async function _deployContractForDirectTests() {
+  async function _deployContractForDirectTests(shouldInsertBalance) {
     if(!admin) admin = (await ethers.getSigners())[0];
     var factory = await ethers.getContractFactory(utils.ZEND_VAULT_CONTRACT_NAME);    
     var ZendBackupVaultDirect = await factory.deploy(admin, BASE_MESSAGE_PREFIX);
@@ -373,29 +383,29 @@ describe("ZEND Claim test", function () {
 
     erc20 = await factory.deploy(TOKEN_NAME, TOKEN_SYMBOL, 
       MOCK_EMPTY_ADDRESS, await ZendBackupVaultDirect.getAddress(), MOCK_EMPTY_ADDRESS, MOCK_EMPTY_ADDRESS);
-    console.log(await ZendBackupVaultDirect.getAddress());
     await ZendBackupVaultDirect.setERC20(await erc20.getAddress()); 
-   
+    
     //load data for direct test
     var dumpRecursiveHash = ZERO_BYTES32;
     dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST_DIRECT_ZEND_ADDRESS, TEST_DIRECT_VALUE);
+    dumpRecursiveHash = updateCumulativeHash(dumpRecursiveHash, TEST_DIRECT_MULTISIG_ADDRESS, TEST_DIRECT_MULTISIG_VALUE);
     await ZendBackupVaultDirect.setCumulativeHashCheckpoint(dumpRecursiveHash); 
 
-    let addressesValues = [{addr: TEST_DIRECT_ZEND_ADDRESS, value: TEST_DIRECT_VALUE}];
+    let addressesValues = [{addr: TEST_DIRECT_ZEND_ADDRESS, value: TEST_DIRECT_VALUE}, {addr: TEST_DIRECT_MULTISIG_ADDRESS, value: TEST_DIRECT_MULTISIG_VALUE}];
     await ZendBackupVaultDirect.batchInsert(dumpRecursiveHash, addressesValues); 
 
     return ZendBackupVaultDirect;
   }
 
   it("Direct test - positive claim", async function () {
-    let ZendBackupVaultDirect = await _deployContractForDirectTests(true);
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
     
     await ZendBackupVaultDirect.claimDirect(TEST_DIRECT_BASE_ADDRESS);
     await _checkBalance(ZendBackupVaultDirect, TEST_DIRECT_BASE_ADDRESS, TEST_DIRECT_VALUE);
   });
 
   it("Direct test - double claim fails the second time", async function () {
-    let ZendBackupVaultDirect = await _deployContractForDirectTests(true);
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
     
     //legit claim
     await ZendBackupVaultDirect.claimDirect(TEST_DIRECT_BASE_ADDRESS);
@@ -404,8 +414,36 @@ describe("ZEND Claim test", function () {
   });
 
   it("Direct test - fails if nothing to claim", async function () {
-    let ZendBackupVaultDirect = await _deployContractForDirectTests(true);
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
     
     let notDirectAddress = TEST_MULTISIG_DESTINATION_ADDRESS;
     await expect(ZendBackupVaultDirect.claimDirect(notDirectAddress)).to.be.revertedWithCustomError(ZendBackupVaultDirect, "NothingToClaim");
-  });});
+  });
+
+  //DIRECT MULTISIG TEST
+  it("Direct Multisig test - positive claim", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
+    
+    await ZendBackupVaultDirect.claimDirectMultisig("0x"+TEST_DIRECT_MULTISIG_SCRIPT, TEST_DIRECT_BASE_ADDRESS);
+    await _checkBalance(ZendBackupVaultDirect, TEST_DIRECT_BASE_ADDRESS, TEST_DIRECT_MULTISIG_VALUE);
+  });
+
+  it("Direct Multisig test - double claim fails the second time", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
+    
+    //legit claim
+    await ZendBackupVaultDirect.claimDirectMultisig("0x"+TEST_DIRECT_MULTISIG_SCRIPT, TEST_DIRECT_BASE_ADDRESS);
+    //double claim
+    await expect(ZendBackupVaultDirect.claimDirectMultisig("0x"+TEST_DIRECT_MULTISIG_SCRIPT, TEST_DIRECT_BASE_ADDRESS))
+      .to.be.revertedWithCustomError(ZendBackupVaultDirect, "NothingToClaim");
+  });
+
+  it("Direct Multisig test - fails if address doesn't correspond to script", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
+    
+    let notDirectAddress = TEST_MULTISIG_DESTINATION_ADDRESS;
+    await expect(ZendBackupVaultDirect.claimDirectMultisig("0x"+TEST_DIRECT_MULTISIG_SCRIPT, notDirectAddress))
+      .to.be.revertedWithCustomError(ZendBackupVaultDirect, "InvalidPublicKey");
+  });
+  
+});

@@ -229,6 +229,40 @@ contract ZendBackupVault is Ownable {
         _claim(destAddress, zenAddress);
     }
 
+    /// @notice Direct claim of special UTXOs to a multisignature partially generated deterministically from a BaseAddress. 
+    ///         This is a special usecase for users that can't sign a message, and requires they create this special UTXO in the old mainchain before the migration.
+    ///          Check documentation for details.
+    /// @param  script is the redeem script for the multisig wallet.
+    /// @param  baseDestAddress is the receiver of the funds. The zend address will be calculated from this one.
+    function claimDirectMultisig(bytes memory script, address baseDestAddress) public canClaim(baseDestAddress) {
+        //check amount to claim
+        bytes20 zenAddress = _extractZenAddressFromScriptOrDestAddress(script);
+        uint256 amount = balances[zenAddress];
+        if (amount == 0) revert NothingToClaim(zenAddress);
+
+        //generate derivative pub key from base address
+        bytes memory baseAddressToBytes = abi.encodePacked(baseDestAddress);
+        bytes32 pubKeyXFromBaseAddress = bytes32(abi.encodePacked(bytes12(0), baseAddressToBytes));
+
+        //extract second key "x" from script
+        uint256 pos = 1;
+        uint256 nextPubKeySize = uint256(uint8(script[pos]));
+        pos += nextPubKeySize + 3; //skip first key and size of the second key
+        bytes32 key; //we just pick first part of the second key
+        assembly {
+            let resultPtr := mload(0x40)
+            let sourcePtr := add(script, 0x20)
+            let offset := add(sourcePtr, pos)
+
+            mstore(resultPtr, mload(offset))
+            key := mload(resultPtr)
+        }
+
+        if(pubKeyXFromBaseAddress != key) revert InvalidPublicKey(1, 0, key, pubKeyXFromBaseAddress);
+
+        _claim(baseDestAddress, zenAddress);
+    }
+
     /// @notice verify public keys from multisignature script
     function _verifyPubKeysFromScript(bytes memory script, PubKey[] calldata pubKeys) internal pure {
         if(script.length < 2) revert InvalidScriptLength();
