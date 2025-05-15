@@ -162,8 +162,10 @@ contract ZendBackupVault is Ownable {
         _claim(destAddress, zenAddress);
     }
 
-    /// @notice Direct claim a P2PKH balance without signing message
-    /// @param  baseDestAddress is the receiver of the funds. The zend address will be calculated from this one. Check documentation for details.
+    /// @notice Direct claim of special UTXOs generated deterministically from a BaseAddress. 
+    ///         This is a special usecase for users that can't sign a message, and requires they create this special UTXO in the old mainchain before the migration.
+    ///          Check documentation for details.
+    /// @param  baseDestAddress is the receiver of the funds. The zend address will be calculated from this one.
     function claimDirect(address baseDestAddress) public canClaim(baseDestAddress) {
         bytes memory addressToBytes = abi.encodePacked(baseDestAddress);
         bytes20 zenAddress = _extractZenAddressFromScriptOrDestAddress(addressToBytes);
