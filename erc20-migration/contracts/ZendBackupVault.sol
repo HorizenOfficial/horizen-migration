@@ -250,18 +250,9 @@ contract ZendBackupVault is Ownable {
         if(minSignatures != 1 || total != 2) revert InvalidDirectMultisigScript(minSignatures, total);
 
         //extract second key "x" from script
-        uint256 pos = 1;
-        uint256 firstPubKeySize = uint256(uint8(script[pos]));
-        pos += firstPubKeySize + 3; //skip size of first key (+1), first key (firstPubKeySize), size of second key (+1) and prefix of second key (+1)
-        bytes32 key; //we just pick first part of the second key
-        assembly {
-            let resultPtr := mload(0x40)
-            let sourcePtr := add(script, 0x20)
-            let offset := add(sourcePtr, pos)
-
-            mstore(resultPtr, mload(offset))
-            key := mload(resultPtr)
-        }
+        uint256 firstPubKeySize = uint256(uint8(script[1]));
+        uint256 start = firstPubKeySize + 4; //skip first OP (+1), skip size of first key (+1), first key (firstPubKeySize), size of second key (+1) and prefix of second key (+1)
+        bytes32 key = _extractBytes32FromBytes(script, start);
 
         if(pubKeyXFromBaseAddress != key) revert InvalidPublicKey(1, 0, key, pubKeyXFromBaseAddress);
 
@@ -286,30 +277,16 @@ contract ZendBackupVault is Ownable {
             if(pubKeys[i].x != 0 && pubKeys[i].y != 0) { //we check pub keys only if both x and y are != 0 
                 //extract key
                 //first 32 bytes
-                bytes32 firstPart;
                 uint256 firstPartStart = pos+1;
-                assembly {
-                    let resultPtr := mload(0x40)
-                    let sourcePtr := add(script, 0x20)
-                    let offset := add(sourcePtr, firstPartStart)
+                bytes32 firstPart = _extractBytes32FromBytes(script, firstPartStart);
 
-                    mstore(resultPtr, mload(offset))
-                    firstPart := mload(resultPtr)
-                }
                 if(pubKeys[i].x != firstPart) revert InvalidPublicKey(i, 0, firstPart, pubKeys[i].x);
 
                 //second part
                 if(nextPubKeySize == HORIZEN_UNCOMPRESSED_PUBLIC_KEY_LENGTH) { //uncompressed case
-                    bytes32 secondPart;
                     uint256 secondPartStart = pos + 33;
-                    assembly {
-                        let resultPtr := mload(0x40)
-                        let sourcePtr := add(script, 0x20)
-                        let offset := add(sourcePtr, secondPartStart)
-
-                        mstore(resultPtr, mload(offset))
-                        secondPart := mload(resultPtr)
-                    }
+                    bytes32 secondPart = _extractBytes32FromBytes(script, secondPartStart);
+                    
                     if(pubKeys[i].y != secondPart) revert InvalidPublicKey(i, 1, secondPart, pubKeys[i].y);
                 }
                 else { //in compressed case, we just check sign
@@ -333,5 +310,19 @@ contract ZendBackupVault is Ownable {
         bytes32 scriptHash = sha256(script);
         scriptHash = ripemd160(abi.encode(scriptHash));
         return bytes20(scriptHash); 
+    }
+
+    /// @notice extract a bytes32 object from a bytes object starting from the given position
+    function _extractBytes32FromBytes(bytes memory script, uint256 start) internal pure returns(bytes32) {
+        bytes32 ret;
+        assembly {
+            let resultPtr := mload(0x40)
+            let sourcePtr := add(script, 0x20)
+            let offset := add(sourcePtr, start)
+
+            mstore(resultPtr, mload(offset))
+            ret := mload(resultPtr)
+        }
+        return ret;
     }
 }

@@ -445,5 +445,4 @@ describe("ZEND Claim test", function () {
     await expect(ZendBackupVaultDirect.claimDirectMultisig("0x"+TEST_DIRECT_MULTISIG_SCRIPT, notDirectAddress))
       .to.be.revertedWithCustomError(ZendBackupVaultDirect, "InvalidPublicKey");
   });
-  
 });
