@@ -56,7 +56,7 @@ contract ZendBackupVault is Ownable {
     error InvalidPublicKeySize(uint256 size);
     error UnexpectedZeroPublicKey(PubKey);
     error InvalidPublicKey(uint256 index, uint256 xOrY, bytes32 expected, bytes32 received);
-
+    error InvalidDirectMultisigScript(uint256 requiredSignaturesInScript, uint256 totalSignaturesInScript);
 
     event Claimed(address indexed claimer, address indexed destAddress, bytes20 zenAddress, uint256 amount);
 
@@ -244,10 +244,15 @@ contract ZendBackupVault is Ownable {
         bytes memory baseAddressToBytes = abi.encodePacked(baseDestAddress);
         bytes32 pubKeyXFromBaseAddress = bytes32(abi.encodePacked(bytes12(0), baseAddressToBytes));
 
+        //check is multisig 1 of 2
+        uint256 minSignatures = uint256(uint8(script[0])) - 80;
+        uint256 total = uint256(uint8(script[script.length - 2])) - 80;
+        if(minSignatures != 1 || total != 2) revert InvalidDirectMultisigScript(minSignatures, total);
+
         //extract second key "x" from script
         uint256 pos = 1;
-        uint256 nextPubKeySize = uint256(uint8(script[pos]));
-        pos += nextPubKeySize + 3; //skip first key and size of the second key
+        uint256 firstPubKeySize = uint256(uint8(script[pos]));
+        pos += firstPubKeySize + 3; //skip size of first key (+1), first key (firstPubKeySize), size of second key (+1) and prefix of second key (+1)
         bytes32 key; //we just pick first part of the second key
         assembly {
             let resultPtr := mload(0x40)
