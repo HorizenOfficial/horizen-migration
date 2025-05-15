@@ -6,7 +6,6 @@ import "./ZenToken.sol";
 import "./EONBackupVault.sol";
 import "./ZendBackupVault.sol";
 import "./LinearTokenVesting.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ZenMigrationFactory
@@ -55,8 +54,8 @@ contract ZenMigrationFactory is Ownable {
         eonVault = new EONBackupVault(address(this));
         zendVault = new ZendBackupVault(address(this), base_claim_message);
 
-        horizenFoundationVestingContract = new LinearTokenVesting(horizenFoundationAdmin, horizenFoundationBeneficiary, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
-        horizenDaoVestingContract = new LinearTokenVesting(horizenDaoAdmin, horizenDaoBeneficiary, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
+        horizenFoundationVestingContract = new LinearTokenVesting(horizenFoundationBeneficiary, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
+        horizenDaoVestingContract = new LinearTokenVesting(horizenDaoBeneficiary, VESTING_TIME_BETWEEN_INTERVALS, VESTING_INTERVALS);
 
         token = new ZenToken(
             tokenName,
@@ -74,6 +73,8 @@ contract ZenMigrationFactory is Ownable {
 
         eonVault.transferOwnership(owner());
         zendVault.transferOwnership(owner());
+        horizenFoundationVestingContract.transferOwnership(horizenFoundationAdmin);
+        horizenDaoVestingContract.transferOwnership(horizenDaoAdmin);
 
         emit ZenMigrationContractsCreated(address(token), address(eonVault), address(zendVault), address(horizenFoundationVestingContract), address(horizenDaoVestingContract));
     }

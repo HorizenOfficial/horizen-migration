@@ -14,11 +14,11 @@ describe("Vesting updates test", function () {
   let INITIAL_AMOUNT_EACH_CLAIM = 10;
   let VESTING_AMOUNT = INITIAL_AMOUNT_EACH_CLAIM * INITIAL_INTERVALS_TO_CLAIM + 1;
   let startTimestamp;
-  let vestingAdmin;
+  let vestingOwner;
 
   beforeEach(async function () {
-    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(4);
-    vestingAdmin = (await ethers.getSigners())[0];
+    expect((await ethers.getSigners()).length, "Not enough signers for the test! Check that .env is correct").to.be.at.least(5);
+    vestingOwner = (await ethers.getSigners())[0];
     initialBeneficiary = (await ethers.getSigners())[1].address;
     newBeneficiary = (await ethers.getSigners())[2].address;
 
@@ -30,7 +30,7 @@ describe("Vesting updates test", function () {
     //deploy vesting contract
     startTimestamp = await time.latest() + 10;
     factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
-    vesting = await factory.deploy(vestingAdmin, initialBeneficiary, INITIAL_TIME_BETWEEN_INTERVALS, INITIAL_INTERVALS_TO_CLAIM);
+    vesting = await factory.deploy(initialBeneficiary, INITIAL_TIME_BETWEEN_INTERVALS, INITIAL_INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
 
     //set ERC-20
@@ -61,9 +61,17 @@ describe("Vesting updates test", function () {
   }
 
   // tests
-  it("changeBeneficiary fails if caller is not the admin", async function () {
+  it("transferOwnership fails if called more than once", async function () {
+    let randomUser1 = (await ethers.getSigners())[3];
+    (await vesting.transferOwnership(randomUser1)).wait();
+    expect(await vesting.owner()).to.be.equal(randomUser1);
+    let randomUser2 = (await ethers.getSigners())[4];
+    await expect(vesting.connect(randomUser1).transferOwnership(randomUser2)).to.be.revertedWithCustomError(vesting, "ImmutableOwner");
+  });
+
+  it("changeBeneficiary fails if caller is not the owner", async function () {
     let randomUser = (await ethers.getSigners())[3];
-    await expect(vesting.connect(randomUser).changeBeneficiary(newBeneficiary)).to.be.revertedWithCustomError(vesting, "UnauthorizedAccount").withArgs(randomUser);
+    await expect(vesting.connect(randomUser).changeBeneficiary(newBeneficiary)).to.be.revertedWithCustomError(vesting, "OwnableUnauthorizedAccount").withArgs(randomUser);
   });
 
   it("changeBeneficiary fails if new beneficiary is NULL_ADDRESS", async function () {
@@ -155,9 +163,9 @@ describe("Vesting updates test", function () {
   });
 
 
-  it("changeVestingParams fails if caller is not the admin", async function () {
+  it("changeVestingParams fails if caller is not the owner", async function () {
     let randomUser = (await ethers.getSigners())[3];
-    await expect(vesting.connect(randomUser).changeVestingParams(INITIAL_TIME_BETWEEN_INTERVALS + 1, INITIAL_INTERVALS_TO_CLAIM + 1)).to.be.revertedWithCustomError(vesting, "UnauthorizedAccount").withArgs(randomUser);
+    await expect(vesting.connect(randomUser).changeVestingParams(INITIAL_TIME_BETWEEN_INTERVALS + 1, INITIAL_INTERVALS_TO_CLAIM + 1)).to.be.revertedWithCustomError(vesting, "OwnableUnauthorizedAccount").withArgs(randomUser);
   });
 
   it("changeVestingParams fails if new params are 0", async function () {

@@ -1,35 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
-import "./LinearTokenVesting.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./interfaces/IVesting.sol";
 
 /// @title ZEN official ERC-20 smart contract
 /// @notice Minting role is granted in the constructor to the Vault Contracts, responsible for
 ///         restoring EON and Zend balances.
 
-contract ZenToken is ERC20Capped, AccessControl {
-    // Create a new role identifier for the minter role
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+contract ZenToken is ERC20Capped {
+    // Simple mapping to track authorized minters
+    mapping(address => bool) public minters;
 
     uint256 internal constant TOTAL_ZEN_SUPPLY = 21_000_000;
     uint256 internal constant TOKEN_SIZE = 10 ** 18;
 
-    address public horizenFoundationVested;
+    address public immutable horizenFoundationVested;
+    address public immutable horizenDaoVested;
 
-    uint8 numOfMinters;
+    uint8 private numOfMinters;
 
-    address public horizenDaoVested;
-
+    uint256 public constant DAO_SUPPLY_PERCENTAGE = 60;
+    uint256 public constant INITIAL_SUPPLY_PERCENTAGE = 25;
 
     error AddressParameterCantBeZero(string paramName);
     error CallerNotMinter(address caller);
 
     modifier canMint() {
         // Checks that the calling account has the minter role
-        if (!hasRole(MINTER_ROLE, msg.sender)) {
+        if (!minters[msg.sender]) {
             revert CallerNotMinter(msg.sender);
         }
         _;
@@ -60,8 +60,9 @@ contract ZenToken is ERC20Capped, AccessControl {
             revert AddressParameterCantBeZero("_horizenDaoVested");
 
         // Grant the minter role to a specified account
-        _grantRole(MINTER_ROLE, _eonBackupContract);
-        _grantRole(MINTER_ROLE, _zendBackupContract);
+        minters[_eonBackupContract] = true;
+        minters[_zendBackupContract] = true;
+
         numOfMinters = 2;
         
         horizenFoundationVested = _horizenFoundationVested;
@@ -73,20 +74,20 @@ contract ZenToken is ERC20Capped, AccessControl {
     }
 
     function notifyMintingDone() public canMint {
-        _revokeRole(MINTER_ROLE, msg.sender);
+        minters[msg.sender] = false;
         unchecked {
             --numOfMinters;
         }
         if (numOfMinters == 0) {
             uint256 remainingSupply = cap() - totalSupply();
             //Horizen DAO is eligible of 60% of the remaining supply. The rest is for the Foundation.
-            uint256 daoSupply = (remainingSupply * 6) / 10;
+            uint256 daoSupply = (remainingSupply * DAO_SUPPLY_PERCENTAGE) / 100;
             uint256 foundationSupply = remainingSupply - daoSupply;
 
-            uint256 daoInitialSupply = (daoSupply * 25) / 100;
-            uint256 foundationInitialSupply = (foundationSupply * 25) / 100;
+            uint256 daoInitialSupply = (daoSupply * INITIAL_SUPPLY_PERCENTAGE) / 100;
+            uint256 foundationInitialSupply = (foundationSupply * INITIAL_SUPPLY_PERCENTAGE) / 100;
             _mint(
-                LinearTokenVesting(horizenFoundationVested).beneficiary(),
+                IVesting(horizenFoundationVested).beneficiary(),
                 foundationInitialSupply
             );
             _mint(
@@ -94,13 +95,13 @@ contract ZenToken is ERC20Capped, AccessControl {
                 foundationSupply - foundationInitialSupply
             );
             _mint(
-                LinearTokenVesting(horizenDaoVested).beneficiary(),
+                IVesting(horizenDaoVested).beneficiary(),
                 daoInitialSupply
             );
             _mint(horizenDaoVested, daoSupply - daoInitialSupply);
 
-            LinearTokenVesting(horizenFoundationVested).startVesting();
-            LinearTokenVesting(horizenDaoVested).startVesting();
+            IVesting(horizenFoundationVested).startVesting();
+            IVesting(horizenDaoVested).startVesting();
         }
     }
 }

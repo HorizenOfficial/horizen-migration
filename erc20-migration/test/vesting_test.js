@@ -28,7 +28,7 @@ describe("Vesting test", function () {
     //deploy vesting contract
     startTimestamp = await time.latest() + 10;
     factory = await ethers.getContractFactory(utils.VESTING_CONTRACT_NAME);
-    vesting = await factory.deploy(vestingAdmin.address, beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
+    vesting = await factory.deploy(beneficiary, TIME_BETWEEN_INTERVALS, INTERVALS_TO_CLAIM);
     await vesting.deploymentTransaction().wait();
 
     //set ERC-20

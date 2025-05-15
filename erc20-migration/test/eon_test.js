@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const utils = require("./utils");
 
+
 describe("Token and EON Backup contract testing", function () {
 
   var admin;
@@ -14,6 +15,7 @@ describe("Token and EON Backup contract testing", function () {
   var tuples;
 
   const BATCH_LENGTH = 500;
+  const MAX_COUNT = 500;
 
   before(async function () {
     //load dump tuples from json file into memory
@@ -83,15 +85,23 @@ describe("Token and EON Backup contract testing", function () {
     const receipt = await erc20.deploymentTransaction().wait(); // Wait for confirmation
   });
 
+  it("Call moreToDistribute() returns false if erc20 is not set", async function () {
+    expect(await EONBackupVault.moreToDistribute()).to.be.false;
+  }); 
+
   it("Set ERC-20 contract reference in the backup contract", async function () {
     var res = await EONBackupVault.setERC20(await erc20.getAddress());
   });
 
-  it("Call distribute() and check distributed balances", async function () {
+  it("Call moreToDistribute() returns true if erc20 is set", async function () {
+    expect(await EONBackupVault.moreToDistribute()).to.be.true;
+  });
+
+  it("Call distribute(maxCount) and check distributed balances", async function () {
     var round = 0;
     while (await EONBackupVault.moreToDistribute()) {
       console.log("distribution round: " + round);
-      var res = await EONBackupVault.distribute();
+      var res = await EONBackupVault.distribute(MAX_COUNT);
       round++;
     }
 
@@ -102,11 +112,11 @@ describe("Token and EON Backup contract testing", function () {
   });
 
   it("If we have distributed everything, no more distribution can happen", async function () {
-    expect(EONBackupVault.distribute()).to.be.revertedWith("Nothing to distribute");
+    expect(EONBackupVault.distribute(MAX_COUNT)).to.be.revertedWith("Nothing to distribute");
   });
 
   it("If we have distributed everything, EONVault cannot mint anymore", async function () {
-    expect(await erc20.hasRole(await erc20.MINTER_ROLE(), await EONBackupVault.getAddress())).to.be.false;
+    expect(await erc20.minters(await EONBackupVault.getAddress())).to.be.false;
   });
 
 });

@@ -328,7 +328,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   let round = 0;
   while (await EONVault.moreToDistribute()) {
     console.log("Distribution round: " + round);
-    let res = await EONVault.distribute();
+    let res = await EONVault.distribute(process.env.DISTRIBUTE_MAX_COUNT);
     let receipt = await res.wait();
     totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
     console.log("Gas used: " + receipt.gasUsed);
