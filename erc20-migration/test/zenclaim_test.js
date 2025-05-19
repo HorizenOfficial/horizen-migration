@@ -56,6 +56,7 @@ describe("ZEND Claim test", function () {
   var TEST_DIRECT_MULTISIG_SCRIPT;
   var TEST_DIRECT_MULTISIG_ADDRESS;
   var TEST_DIRECT_MULTISIG_VALUE = 10595;
+  var TEST_DIRECT_MULTISIG_SIGNATURE_HEX_1;
 
   const MOCK_EMPTY_ADDRESS = "0x0000000000000000000000000000000000000001";
 
@@ -120,10 +121,13 @@ describe("ZEND Claim test", function () {
     TEST_DIRECT_ZEND_ADDRESS = "0x" + bs58check.decode(directZENDTransferAddress).toString("hex").slice(4); //remove the chain prefix
 
     //direct multisig case
-    var testDirectMultisigPubKey2 = "02000000000000000000000000"+TEST_DIRECT_BASE_ADDRESS.substring(2);
+    var testDirectMultisigPubKey2 = "02"+createHash('sha256').update(Buffer.from(TEST_DIRECT_BASE_ADDRESS.substring(2), 'hex')).digest('hex')
     TEST_DIRECT_MULTISIG_SCRIPT = zencashjs.address.mkMultiSigRedeemScript([pubKey1, testDirectMultisigPubKey2], 1, 2);
     var zenDirectMultisigAddress = zencashjs.address.multiSigRSToAddress(TEST_DIRECT_MULTISIG_SCRIPT); 
     TEST_DIRECT_MULTISIG_ADDRESS = "0x"+bs58check.decode(zenDirectMultisigAddress).toString("hex").slice(4); //remove the chain prefix
+
+    messageToSign = MESSAGE_PREFIX+TEST_DIRECT_MULTISIG_ADDRESS+TEST_MULTISIG_DESTINATION_ADDRESS;
+    TEST_DIRECT_MULTISIG_SIGNATURE_HEX_1 = zencashjs.message.sign(messageToSign, privKey1, false).toString("hex");
   });
 
   function updateCumulativeHash(previousHash, address, value) {
@@ -444,5 +448,15 @@ describe("ZEND Claim test", function () {
     let notDirectAddress = TEST_MULTISIG_DESTINATION_ADDRESS;
     await expect(ZendBackupVaultDirect.claimDirectMultisig("0x"+TEST_DIRECT_MULTISIG_SCRIPT, notDirectAddress))
       .to.be.revertedWithCustomError(ZendBackupVaultDirect, "InvalidPublicKey");
+  });
+
+  it("Direct Multisig test - success using classic multisig on direct multisig", async function () {
+    let ZendBackupVaultDirect = await _deployContractForDirectTests();
+
+    let signatures = ["0x"+TEST_DIRECT_MULTISIG_SIGNATURE_HEX_1, "0x"];
+    let pubKeys = [TEST1_PUBLICKEY, ZERO_PUBLICKEY];
+    
+    await ZendBackupVaultDirect.claimP2SH(TEST_MULTISIG_DESTINATION_ADDRESS, signatures, "0x"+TEST_DIRECT_MULTISIG_SCRIPT, pubKeys);
+    await _checkBalance(ZendBackupVaultDirect, TEST_MULTISIG_DESTINATION_ADDRESS, TEST_DIRECT_MULTISIG_VALUE);
   });
 });

@@ -242,7 +242,7 @@ contract ZendBackupVault is Ownable {
 
         //generate derivative pub key from base address
         bytes memory baseAddressToBytes = abi.encodePacked(baseDestAddress);
-        bytes32 pubKeyXFromBaseAddress = bytes32(abi.encodePacked(bytes12(0), baseAddressToBytes));
+        bytes32 pubKeyXFromBaseAddress = sha256(baseAddressToBytes);
 
         //check is multisig 1 of 2
         uint256 minSignatures = uint256(uint8(script[0])) - 80;
@@ -316,12 +316,9 @@ contract ZendBackupVault is Ownable {
     function _extractBytes32FromBytes(bytes memory script, uint256 start) internal pure returns(bytes32) {
         bytes32 ret;
         assembly {
-            let resultPtr := mload(0x40)
             let sourcePtr := add(script, 0x20)
             let offset := add(sourcePtr, start)
-
-            mstore(resultPtr, mload(offset))
-            ret := mload(resultPtr)
+            ret := mload(offset)
         }
         return ret;
     }
