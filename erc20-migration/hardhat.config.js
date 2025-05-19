@@ -537,17 +537,17 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
     exit(-1);
   }
 
-  if (process.env.EON_TOTAL_BALANCE == null) {
-    console.error("EON_TOTAL_BALANCE environment variable not set. Exiting.")
+  if (process.env.EON_FILE == null) {
+    console.error("EON_FILE environment variable not set: missing EON accounts file. Exiting.");
     exit(-1);
   }
-  console.log("EON_TOTAL_BALANCE: " + process.env.EON_TOTAL_BALANCE);
+  console.log("Using EON accounts file: " + process.env.EON_FILE);
 
-  if (process.env.ZEND_TOTAL_BALANCE == null) {
-    console.error("ZEND_TOTAL_BALANCE environment variable not set. Exiting.")
+  if (process.env.ZEND_FILE == null) {
+    console.error("ZEND_FILE environment variable not set: missing ZEND accounts file. Exiting.");
     exit(-1);
   }
-  console.log("ZEND_TOTAL_BALANCE: " + process.env.ZEND_TOTAL_BALANCE);
+  console.log("Using ZEND accounts file: " + process.env.ZEND_FILE);
 
   if (process.env.HORIZEN_FOUNDATION == null) {
     console.error("HORIZEN_FOUNDATION environment variable not set: missing Horizen Foundation account address. Exiting.");
@@ -584,27 +584,19 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
     exit(-1);
   }
 
-
-  const expectedRemainingZenSupply = MAX_ZEN_SUPPLY - BigInt(process.env.ZEND_TOTAL_BALANCE) - BigInt(process.env.EON_TOTAL_BALANCE);
-
-  const expectedFoundationZenSupply = expectedRemainingZenSupply * BigInt(4)/BigInt(10);
-  const expectedInitialFoundationZenSupply = expectedFoundationZenSupply/BigInt(4);
-  let zenFoundationBalance = await ZENToken.balanceOf(foundationVestingBeneficiary);
-  console.log("Horizen Foundation address balance: " + zenFoundationBalance);
-  if (zenFoundationBalance != expectedInitialFoundationZenSupply){
-    console.error("Wrong Horizen Foundation balance. Expected balance: {0}, actual balance {1}", expectedInitialFoundationZenSupply, zenFoundationBalance);
-    exit(-1);        
+  var eonTotalBalance = BigInt(0);
+  var zendTotalBalance = BigInt(0);
+  const accounts = loadAccountsFromFile(process.env.EON_FILE);
+  for (const [address, balance] of accounts) {
+    eonTotalBalance = eonTotalBalance + BigInt(balance);
   }
-  const expectedInitialVestingFoundationZenSupply = expectedFoundationZenSupply - expectedInitialFoundationZenSupply;
-  let zenVestingFoundationBalance = await ZENToken.balanceOf(horizenFoundationVestedAddress);
-  console.log("Horizen Foundation vesting balance: " + zenVestingFoundationBalance);
-  if (zenVestingFoundationBalance != expectedInitialVestingFoundationZenSupply){
-    console.error("Wrong Horizen Foundation vesting balance. Expected balance: {0}, actual balance {1}", expectedInitialVestingFoundationZenSupply, zenVestingFoundationBalance);
-    exit(-1);        
+  const accountsZend = loadAccountsFromFile(process.env.ZEND_FILE);
+  for (const [address, balance] of accountsZend) {
+    zendTotalBalance = zendTotalBalance + BigInt(balance);
   }
+  const expectedRemainingZenSupply = MAX_ZEN_SUPPLY - zendTotalBalance - eonTotalBalance;
 
-
-  const expectedDaoZenSupply = expectedRemainingZenSupply - expectedFoundationZenSupply;
+  const expectedDaoZenSupply = expectedRemainingZenSupply * BigInt(6)/BigInt(10);
   const expectedInitialDaoZenSupply = expectedDaoZenSupply/BigInt(4);
   let zenDaoBalance = await ZENToken.balanceOf(process.env.HORIZEN_DAO);
   console.log("Horizen DAO address balance: " + zenDaoBalance);
@@ -621,7 +613,23 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
     exit(-1);        
   }
 
+  const expectedFoundationZenSupply = expectedRemainingZenSupply - expectedDaoZenSupply;
+  const expectedInitialFoundationZenSupply = expectedFoundationZenSupply/BigInt(4);
+  let zenFoundationBalance = await ZENToken.balanceOf(process.env.HORIZEN_FOUNDATION);
+  console.log("Horizen Foundation address balance: " + zenFoundationBalance);
+  if (zenFoundationBalance != expectedInitialFoundationZenSupply){
+    console.error("Wrong Horizen Foundation balance. Expected balance: {0}, actual balance {1}", expectedInitialFoundationZenSupply, zenFoundationBalance);
+    exit(-1);        
+  }
 
-  console.log("Total balance: " + (BigInt(process.env.ZEND_TOTAL_BALANCE) + BigInt(process.env.EON_TOTAL_BALANCE) + zenFoundationBalance + zenVestingFoundationBalance + zenDaoBalance + zenVestingDaoBalance));
+  const expectedInitialVestingFoundationZenSupply = expectedFoundationZenSupply - expectedInitialFoundationZenSupply;
+  let zenVestingFoundationBalance = await ZENToken.balanceOf(horizenFoundationVestedAddress);
+  console.log("Horizen Foundation vesting balance: " + zenVestingFoundationBalance);
+  if (zenVestingFoundationBalance != expectedInitialVestingFoundationZenSupply){
+    console.error("Wrong Horizen Foundation vesting balance. Expected balance: {0}, actual balance {1}", expectedInitialVestingFoundationZenSupply, zenVestingFoundationBalance);
+    exit(-1);        
+  }
+
+  console.log("Total balance: " + (zendTotalBalance + eonTotalBalance + zenFoundationBalance + zenVestingFoundationBalance + zenDaoBalance + zenVestingDaoBalance));
   console.log("Result: OK");
 });
