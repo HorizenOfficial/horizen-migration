@@ -74,8 +74,6 @@ Usage:
 - In .env file update the entries: 
     - HORIZEN_FOUNDATION=\<address of Horizen Foundation\>. 
     - HORIZEN_DAO=\<address of Horizen DAO\>. 
-    - EON_TOTAL_BALANCE=\<Total ZEN balance restored from EON. It can be retrieved as output of restoreEON task\>
-    - ZEND_TOTAL_BALANCE=\<Total ZEN balance restored from ZEND. It can be retrieved as output of restoreZEND task\>
 -  run <i>npx hardhat finalCheck</i>.
 7. For testing the <i>restoreEON</i> and <i>restoreZEND</i> tasks:
  - run <i>npx hardhat node</i>. This command will run a test node, with some predefined accounts.
