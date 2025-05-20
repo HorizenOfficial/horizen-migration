@@ -10,8 +10,9 @@ import base58
 This script transforms the balances data dumped from zend in the format requested for Horizen. 
 Most accounts will be restored in ZendBackVault contract and they will need to be explicitly claimed by the owners to 
 transfer their balances to an Ethereum address.
-Others will be directly mapped to Ethereum addresses, provided off-chain by the accounts owners, and they will be restored 
-in EonBackVault contract. The list of these accounts is provided as an input file to this script.
+For some external partners (CEX), not able to generate claim message signatures, a direct mapping to Ethereum addresses 
+will be provided offchain. These accounts will be restored in EonBackVault contract. The list of these accounts is 
+provided as an input file to this script.
 
 The accounts that will be restored by ZendBackVault contract will be saved in a json file with the format:
 <"decoded address":"balance">, alphabetically ordered.
@@ -46,7 +47,7 @@ def satoshi_2_wei(value_in_satoshi):
 
 if len(sys.argv) != 3 and len(sys.argv) != 5:
 	print(
-		"Usage: python3 {} <zend dump file name> <mapping file name> <zend_vault_output_file> <eon_vault_output_file>"
+		"Usage: python3 {} <zend dump file name> <mapping file name> <zend_vault_output_file> <eon_vault_automappings_file>"
 		.format(os.path.basename(__file__)))
 	sys.exit(1)
 

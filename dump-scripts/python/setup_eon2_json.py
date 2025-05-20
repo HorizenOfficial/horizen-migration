@@ -25,7 +25,7 @@ NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
 if len(sys.argv) != 4 and len(sys.argv) != 5 :
 	print(
-		"Usage: python3 {} <Eon dump file name> <Eon stakes file name> <Zend accounts file name> <output_file>"
+		"Usage: python3 {} <Eon dump file name> <Eon stakes file name> <eon_vault_automappings_file> <output_file>"
 		.format(os.path.basename(__file__)))
 	sys.exit(1)
 
