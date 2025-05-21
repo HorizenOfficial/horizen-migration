@@ -81,26 +81,26 @@ def retrieve_balance_from_zend_dump(dump_file_path):
             balance_from_dump += int(row[1])
     return balance_from_dump
 
+def main():
+    if len(sys.argv) != 4:
+        print(
+            "Usage: python3 {} <mainchain block height> <Zend dump file name> <EON sidechain balance>"
+            .format(os.path.basename(__file__)))
+        sys.exit(1)
 
-if len(sys.argv) != 4:
-	print(
-		"Usage: python3 {} <mainchain block height> <Zend dump file name> <EON sidechain balance>"
-		.format(os.path.basename(__file__)))
-	sys.exit(1)
+    height = int(sys.argv[1])
+    calculated_total_supply = calculate_total_supply_from_height(height)
+    print(f"Calculated mainchain balance at block {height} is {calculated_total_supply} satoshis")
+    total_supply_without_sidechains_and_shielded_pool = remove_shielded_pool_and_sidechains_balance(calculated_total_supply)
+    print(f"Mainchain balance at block {height} without sidechains and shielded pool balance is {total_supply_without_sidechains_and_shielded_pool} satoshis")
 
-height = int(sys.argv[1])
-calculated_total_supply = calculate_total_supply_from_height(height)
-print(f"Calculated mainchain balance at block {height} is {calculated_total_supply} satoshis")
-total_supply_without_sidechains_and_shielded_pool = remove_shielded_pool_and_sidechains_balance(calculated_total_supply)
-print(f"Mainchain balance at block {height} without sidechains and shielded pool balance is {total_supply_without_sidechains_and_shielded_pool} satoshis")
+    zend_dump_file_path = sys.argv[2]
+    balance_from_dump = retrieve_balance_from_zend_dump(zend_dump_file_path)
+    print(f"The balance from zend dump is {balance_from_dump} satoshis")
 
-zend_dump_file_path = sys.argv[2]
-balance_from_dump = retrieve_balance_from_zend_dump(zend_dump_file_path)
-print(f"The balance from zend dump is {balance_from_dump} satoshis")
-
-difference = abs(total_supply_without_sidechains_and_shielded_pool - balance_from_dump)
-if difference >= DIFFERENCE_THRESHOLD:
-    print(f"Difference between calculated total supply and balance from zend dump is {difference} satoshis, higher than the defined threshold {DIFFERENCE_THRESHOLD}")
-    sys.exit(1)
-else:
-    print(f"Difference between calculated total supply and balance from zend dump is {difference} satoshis, below the defined threshold {DIFFERENCE_THRESHOLD}")
+    difference = abs(total_supply_without_sidechains_and_shielded_pool - balance_from_dump)
+    if difference >= DIFFERENCE_THRESHOLD:
+        print(f"Difference between calculated total supply and balance from zend dump is {difference} satoshis, higher than the defined threshold {DIFFERENCE_THRESHOLD}")
+        sys.exit(1)
+    else:
+        print(f"Difference between calculated total supply and balance from zend dump is {difference} satoshis, below the defined threshold {DIFFERENCE_THRESHOLD}")

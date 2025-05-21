@@ -16,15 +16,22 @@ a Horizen account where their funds will be sent. This claim procedure will be e
 the Ethereum address where their funds will be restored will be provided directly off-chain by the owners, using a json file 
 where the Zend accounts are mapped to Ethereum addresses. These accounts will then be restored using the EonBackupVault smart contract, as if they were Eon Accounts.
 
+# Module installation:
+- Execute this command from this folder: 
+
+```sh
+pip install -e .
+```
+
 
 # Workflow
 The workflow should be:
 1. Execute the dump on Zend using `dumper` application. 
-2. Convert the Zend dump using `zend_to_horizen.py` script, eventually together with the Zend - Ethereum addresses mapping file, 
+2. Convert the Zend dump using `zend_to_horizen` script, eventually together with the Zend - Ethereum addresses mapping file, 
 and then retrieve the output files, one for the addresses to be restored using ZenBackupVault smart contract and one for EonBackupVault smart contract.  (e.g. zend_vault_accounts.json and eon_vault_accounts.json).
 3. Call zen_dump rpc method on EON at a certain block height and retrieve the resulting file (e.g. eon_dump.json).
-4. Execute `get_all_forger_stakes.py` script at the same block height used with zen_dump rpc and retrieve the resulting file (e.g. eon_stakes.json).
-5. Execute `setup_eon2_json.py` script using as input the eon dump file, the eon stakes file and the file with the zend accounts mapped to Ethereum addresses.
+4. Execute `get_all_forger_stakes` script at the same block height used with zen_dump rpc and retrieve the resulting file (e.g. eon_stakes.json).
+5. Execute `setup_eon2_json` script using as input the eon dump file, the eon stakes file and the file with the zend accounts mapped to Ethereum addresses.
 
 # Migration Scripts
 
@@ -36,7 +43,7 @@ block height.
 Usage:
 
 ```sh
-$ python3 get_all_forger_stakes.py <block height> <rpc url> <output_file>
+$ get_all_forger_stakes <block height> <rpc url> <output_file>
 ```
 
 * `<block height>` block height used for the dump.
@@ -57,7 +64,7 @@ It creates as output:
 Usage:
 
 ```sh
-$ python3 zend_to_horizen.py <zend csv dump file> <json mapping file> <zend_vault_file> <eon_vault_file>
+$ zend_to_horizen <zend csv dump file> <json mapping file> <zend_vault_file> <eon_vault_file>
 ```
 
 The output is:
@@ -71,7 +78,7 @@ to Horizen 2.0.
 Usage:
 
 ```sh
-$ python3 setup_eon2_json.py <eon dump file> <eon stake file> <eon_vault_file> <output_file>
+$ setup_eon2_json <eon dump file> <eon stake file> <eon_vault_file> <output_file>
 ```
 
 * `<eon dump file>` is the json file created calling zen_dump rpc method on EON.

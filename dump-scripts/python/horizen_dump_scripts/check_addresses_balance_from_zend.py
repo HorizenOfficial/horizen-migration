@@ -101,30 +101,30 @@ def validate_zend_data(zend_dump_file_name, zend_vault_file_name, mapping_file_n
         for horizen2_zend_address, _ in zend_vault_data.items():
             set_failed_execution()
             print(f"Zend address {horizen2_zend_address} present in Horizen 2 from Zend file {zend_vault_file_name} not found in Zend dump file {zend_dump_file_name}.")
-        
-if len(sys.argv) != 3 and len(sys.argv) != 5:
-    print(
-        "Usage: python3 {} <Zend dump file name> <mapping file> <Zend Vault file> <Eon Vault file>"
-        .format(os.path.basename(__file__)))
-    sys.exit(1)
+def main():        
+    if len(sys.argv) != 3 and len(sys.argv) != 5:
+        print(
+            "Usage: python3 {} <Zend dump file name> <mapping file> <Zend Vault file> <Eon Vault file>"
+            .format(os.path.basename(__file__)))
+        sys.exit(1)
 
 
-# Input files
-zend_dump_file_name = sys.argv[1]
-if len(sys.argv) == 3:
-    mapping_file_name = None
-    zend_vault_file_name = sys.argv[2]
-    eon_vault_file_name = None
-else:
-    mapping_file_name = sys.argv[2]
-    zend_vault_file_name = sys.argv[3]
-    eon_vault_file_name = sys.argv[4]
+    # Input files
+    zend_dump_file_name = sys.argv[1]
+    if len(sys.argv) == 3:
+        mapping_file_name = None
+        zend_vault_file_name = sys.argv[2]
+        eon_vault_file_name = None
+    else:
+        mapping_file_name = sys.argv[2]
+        zend_vault_file_name = sys.argv[3]
+        eon_vault_file_name = sys.argv[4]
 
-# Run the data validation
-validate_zend_data(zend_dump_file_name, zend_vault_file_name, mapping_file_name, eon_vault_file_name)
+    # Run the data validation
+    validate_zend_data(zend_dump_file_name, zend_vault_file_name, mapping_file_name, eon_vault_file_name)
 
-if failed_zend_check:
-    print("Horizen 2 Zend address and balance check failed.")
-    sys.exit(1)
-else:
-    print("Horizen 2 Zend address and balance check successful.")
+    if failed_zend_check:
+        print("Horizen 2 Zend address and balance check failed.")
+        sys.exit(1)
+    else:
+        print("Horizen 2 Zend address and balance check successful.")
