@@ -25,7 +25,7 @@ run.sh <network_type> <zend_dump> <eon_dump> <eon_stakes> <output_folder>
   * `<network_type>`: Network used for the input data (mainnet or testnet) <br/>
   * `<zend_dump>`: Path to Zend dump, obtained with zend dumper command<br/>
   * `<eon_dump>`: Path to EON dump, obtained with zen_dump rpc method on EON<br/>
-  * `<eon_stakes>`: Path to EON stakes dump, obtained with pyhton command [get_all_forger_stakes](https://github.com/HorizenOfficial/horizen-migration/blob/pc/migration_bash/dump-scripts/python/horizen_dump_scripts/get_all_forger_stakes.py) (included in the python horizen_dump_scripts module)<br/>
+  * `<eon_stakes>`: Path to EON stakes dump, obtained with the command [get_all_forger_stakes](https://github.com/HorizenOfficial/horizen-migration/blob/pc/migration_bash/dump-scripts/python/horizen_dump_scripts/get_all_forger_stakes.py) (installed by the above python horizen_dump_scripts module)<br/>
   * `<output_folder>`: Output folder of the final artifacts<br/>
 
 
