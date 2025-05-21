@@ -23,6 +23,13 @@ where the Zend accounts are mapped to Ethereum addresses. These accounts will th
 pip install -e .
 ```
 
+(For more recents Ubuntu versions you may be forced to activate an environment first, for example with: )
+
+```sh
+python3 -m venv .venv
+source  .venv/bin/activate
+```
+
 
 # Workflow
 The workflow should be:
