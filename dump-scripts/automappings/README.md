@@ -1,4 +1,4 @@
-This folder contains the auto-mapped address from Zend to the new Horizen ERC-20 on Base, for mainnet and testnet.
+This folder contains the auto-mapped address from Zend to the new Horizen ERC-20 on Base, for mainnet and testnet.<br/>
 The format is:
 
 ```
