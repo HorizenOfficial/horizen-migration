@@ -82,11 +82,11 @@ echo ""
 echo "*** Converting zend dump:"
 output_zend="$output_dir/zend.json"
 output_eon_mapping="$output_dir/_automaps.json"
-python3 python/zend_to_horizen.py $zend_abs_path $mappings_abs_path $output_zend $output_eon_mapping
+zend_to_horizen $zend_abs_path $mappings_abs_path $output_zend $output_eon_mapping
 echo ""
 echo "*** Converting eon dump:"
 output_eon="$output_dir/eon.json"
-python3 python/setup_eon2_json.py $eon_abs_path $eon_stakes_abs_path $output_eon_mapping $output_eon
+setup_eon2_json $eon_abs_path $eon_stakes_abs_path $output_eon_mapping $output_eon
 echo ""
 echo "Pipeline completed succesfully!"
 echo "Final artifacts produced here:"
