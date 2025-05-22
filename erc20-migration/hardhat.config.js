@@ -298,21 +298,17 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
         console.log(error);
         exit(-1);
       }
-
     }
     console.log(`ERC20 contract verified`);
 
-    const VESTING_TIME_BETWEEN_INTERVALS = 30 * 24 * 60 * 60; //Length in seconds of each vesting interval (30 days)
-    const VESTING_INTERVALS = 48; //Total number of vesting intervals
-    
     try {
 
       await hre.run("verify:verify", {
         address: await ZenMigrationFactory.horizenFoundationVestingContract(),
         constructorArguments: [
           process.env.HORIZEN_FOUNDATION,
-          VESTING_TIME_BETWEEN_INTERVALS,
-          VESTING_INTERVALS
+          await foundationVesting.timeBetweenClaims(),
+          await foundationVesting.intervalsToClaim()
         ],
       });
     }
@@ -332,8 +328,8 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
         address: await ZenMigrationFactory.horizenDaoVestingContract(),
         constructorArguments: [
           process.env.HORIZEN_DAO,
-          VESTING_TIME_BETWEEN_INTERVALS,
-          VESTING_INTERVALS
+          await daoVesting.timeBetweenClaims(),
+          await daoVesting.intervalsToClaim()
         ],
       });
     }
@@ -788,9 +784,3 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
   console.log("Result: OK");
 });
 
-task("prova", "Calculates the final hash for ZEND accounts").addFlag("verify", "pippo").setAction(async (taskArgs, hre) => {
-
-
-  console.log(taskArgs.verify);
-
-});
