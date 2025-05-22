@@ -6,12 +6,15 @@ import sys
 """
 This script transforms the account data dumped from Eon in the format requested for the migration
 to Horizen 2.0.
+In case there are zend addresses directly mapped to Ethereum addresses, provided off-chain by the accounts owners, their balances
+will be added to the accounts from EON.
 It takes as input:
  - the json file with the data dumped from Eon
  - the json file with the list of Eon delegators and their stakes
- - the output filename to be generated
+ - the json file with the Ethereum accounts where the some zend addresses were mapped to (optional)
+ - the output filename to be generated.
 
-It creates a json file with the data from Eon in alphabetical order.
+It creates a json file with the elements in alphabetical order.
 The following accounts are not saved in the file:
  - accounts with 0 balance and no stakes 
  - smart contract accounts 
@@ -20,15 +23,22 @@ The following accounts are not saved in the file:
 
 NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 4 and len(sys.argv) != 5 :
 	print(
-		"Usage: python3 {} <Eon dump file name> <Eon stakes file name> <output_file>"
+		"Usage: python3 {} <Eon dump file name> <Eon stakes file name> <eon_vault_automappings_file> <output_file>"
 		.format(os.path.basename(__file__)))
 	sys.exit(1)
 
 eon_dump_file_name = sys.argv[1]
 eon_stakes_file_name = sys.argv[2]
-result_file_name = sys.argv[3]
+zend_file_name = ""
+
+if  len(sys.argv) == 4:
+	result_file_name = sys.argv[3]
+else:
+	zend_file_name = sys.argv[3]
+	result_file_name = sys.argv[4]
+
 
 with open(eon_dump_file_name, 'r') as eon_dump_file:
 	eon_dump_data = json.load(eon_dump_file)
@@ -41,20 +51,20 @@ total_restored_balance = 0
 total_filtered_balance = 0
 
 class Top20:
-    def __init__(self):
-        self.items = []  
+	def __init__(self):
+		self.items = []
 
-    def add_item(self, new_item):
-        self.items.append(new_item)
+	def add_item(self, new_item):
+		self.items.append(new_item)
 
-    
-    def print_items(self):
-        self.items.sort(key=lambda x: x['amount'], reverse=True)
-        i = 0
-        for item in self.items:
-            if (i<20):
-            	print(f"{item['id']}, {item['amount']}")
-            i = i + 1
+
+	def print_items(self):
+		self.items.sort(key=lambda x: x['amount'], reverse=True)
+		i = 0
+		for item in self.items:
+			if i<20:
+				print(f"{item['id']}, {item['amount']}")
+			i = i + 1
 
 
 top_20_not_migrated_contracts = Top20()
@@ -102,9 +112,29 @@ for account, stake_amount in eon_stakes_data.items():
 		print("Delegator {} is a smart contract".format(account))
 		print(" its balance is {}".format(stake_amount))
 
-print("Total balance from EON (EOA + Contracts + Stakes):                                 {}".format(total_balance))
+total_from_zend = 0
+# Importing Ethereum-mapped zend accounts
+if  len(sys.argv) == 5:
+	with open(zend_file_name, 'r') as zend_file:
+		zend_data = json.load(zend_file)
+		for account, amount in zend_data.items():
+			account = account.lower()
+			total_from_zend = total_from_zend + amount
+			total_balance = total_balance + amount
+			total_restored_balance = total_restored_balance + amount
+
+			if account in results:
+				balance = results[account]
+				balance = balance + amount
+				results[account] = balance
+			elif amount != 0:
+				results[account] = amount
+
+
+print("Total balance from EON (EOA + Contracts + Stakes + Zend):                          {}".format(total_balance))
 print("Total stakes:                                                                      {}".format(total_stakes))
-print("Total balance from EON migrated (EOA + EOA Stakes):                                {}".format(total_restored_balance))
+print("Total zend  :                                                                      {}".format(total_from_zend))
+print("Total balance from EON migrated (EOA + EOA Stakes + Zend):                         {}".format(total_restored_balance))
 print("Total balance from EON not restored (Contracts + Contracts Stakes + NULL address): {}".format(total_filtered_balance))
 print("Top 20 NOT migrated contracts by ZEN balance:")
 top_20_not_migrated_contracts.print_items()
