@@ -100,10 +100,10 @@ with open(zend_dump_file_name, 'r') as zend_dump_file:
 							zend_vault_results[decoded_address] = zend_vault_results[decoded_address] + balance_in_wei
 						else:
 							zend_vault_results[decoded_address] = balance_in_wei
-					except:
+					except Exception as e:
 						print(
-							"Error while processing line with address: {0}, balance {1}. The file is corrupted, exiting "
-							.format(zend_address, balance_in_satoshi))
+							"Error {2} while processing line with address: {0}, balance: {1}. The file is corrupted, exiting."
+							.format(zend_address, balance_in_satoshi, e))
 						exit(-1)
 			else:
 				print(
