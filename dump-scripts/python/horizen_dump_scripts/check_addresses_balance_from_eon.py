@@ -20,7 +20,6 @@ setup_eon2_json.py script will not include them in the Horizen 2 file.
 Then the addresses and the balances related to EON will be checked in search of missing address or mismatch in the balance.
 
 """
-
 NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
 # Global variable to keep track of failed checks
@@ -90,27 +89,27 @@ def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, 
         assert counter == counter_inverse, "Different number of accounts in EON dump data than in Horizen 2"
         print(f"checked {counter} EON addresses")
 
+def main():
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        print(
+            "Usage: check_addresses_balance_from_eon {} <Eon dump file name> <Eon stakes file name> <Zend accounts file name> <Horizen2 file>"
+            .format(os.path.basename(__file__)))
+        sys.exit(1)
 
-if len(sys.argv) != 4 and len(sys.argv) != 5:
-    print(
-        "Usage: python3 {} <Eon dump file name> <Eon stakes file name> <Zend accounts file name> <Horizen2 file>"
-        .format(os.path.basename(__file__)))
-    sys.exit(1)
 
+    zend_file_name = ""
+    eon_dump_file_name = sys.argv[1]
+    eon_stakes_file_name = sys.argv[2]
+    if len(sys.argv) == 4:
+        horizen2_file_name = sys.argv[3]
+    else:
+        zend_file_name = sys.argv[3]
+        horizen2_file_name = sys.argv[4]
 
-zend_file_name = ""
-eon_dump_file_name = sys.argv[1]
-eon_stakes_file_name = sys.argv[2]
-if len(sys.argv) == 4:
-    horizen2_file_name = sys.argv[3]
-else:
-    zend_file_name = sys.argv[3]
-    horizen2_file_name = sys.argv[4]
+    validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, horizen2_file_name)
 
-validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, horizen2_file_name)
-
-if failed_horizen2_check:
-    print("Horizen 2 address and balance check failed.")
-    sys.exit(1)
-else:
-    print("Horizen 2 address and balance check successful.")
+    if failed_horizen2_check:
+        print("Horizen 2 address and balance check failed.")
+        sys.exit(1)
+    else:
+        print("Horizen 2 address and balance check successful.")
