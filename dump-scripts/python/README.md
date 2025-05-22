@@ -23,12 +23,21 @@ where the Zend accounts are mapped to Ethereum addresses. These accounts will th
 pip install -e .
 ```
 
-(For more recents Ubuntu versions you may be forced to activate an environment first, for example with: )
+  (For more recents Ubuntu versions you may be forced to activate an environment first, in this case you can follow these steps: )
 
-```sh
-python3 -m venv .venv
-source  .venv/bin/activate
-```
+  1. Install the Ubuntu package python3-venv:
+
+  ```sh
+  sudo apt update && sudo apt install python3-venv
+  ```
+  2. Activate the environment
+
+  ```sh
+  python3 -m venv .venv
+  source  .venv/bin/activate
+  ```
+
+  3. When completed, in order to exit from the .venv type: deactivate
 
 
 # Workflow
