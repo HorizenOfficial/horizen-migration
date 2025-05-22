@@ -83,7 +83,7 @@ if [ -d "$output_dir" ]; then
         fi
     fi
 else
-    echo "Error: output directory '$output_dir' does not exists"
+    echo "Error: output directory '$output_dir' does not exist"
     exit 1
 fi
 output_dir_abs_path="$(realpath "$output_dir")"
