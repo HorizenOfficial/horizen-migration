@@ -100,4 +100,7 @@ Usage:
 - Update in .env file the entry ZEND_HASH with the hash calculated in the previous step.
 - Run <i>npx hardhat restoreEON</i>
 - Run <i>npx hardhat restoreZEND</i>
-
+8. contractSetup task can verify the deployed contracts. For executing the verification, follow the following steps:
+- Choose a network with an explorer (eg Base Sepolia). Note that verification won't work using the hardhat node.
+- Update in .env file the entry BASE_SEPOLIA_API_KEY or BASE_API_KEY with the API key obtained from the network.
+- run <i>npx hardhat contractSetup --verify</i>. 
