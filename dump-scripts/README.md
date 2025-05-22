@@ -6,11 +6,11 @@ Execute **create_restore_artifacts.sh**  to transform the ZEND and EON dumps in 
 - install horizen_dump_scripts module:
 
 ```sh
-cd python/horizen_dump_scripts
+cd python
 pip install -e .
 ```
 
-  (For more recents Ubuntu versions you may be forced to activate an environment first, in this case you can follow these steps: )
+  (For more recent Ubuntu versions you may be forced to activate an environment first, in this case you can follow these steps: )
 
   1. Install the Ubuntu package python3-venv:
 
@@ -38,7 +38,7 @@ create_restore_artifacts.sh <network_type> <zend_dump> <eon_dump> <eon_height> <
   * `<eon_dump>`: Path to EON dump, obtained with zen_dump rpc method on EON<br/>
   * `<eon_height>`: Height of the EON dump<br/>
   * `<output_folder>`: Output folder of the final artifacts<br/>
-  * `<eon_rpc_url>`: (Optional) EON rpc url. If not specified - the offical rpc urls will be used, based on *network_type* parameter<br/>
+  * `<eon_rpc_url>`: (Optional) EON rpc url. If not specified - the official rpc urls will be used, based on *network_type* parameter<br/>
 
 
 Note: If you want to execute manually the process step-by-step, follow the detailed description [here](https://github.com/HorizenOfficial/horizen-migration/tree/pc/migration_bash/dump-scripts/python/README.md) .

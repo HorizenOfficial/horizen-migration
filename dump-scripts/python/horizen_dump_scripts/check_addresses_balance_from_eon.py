@@ -92,7 +92,7 @@ def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, 
 def main():
     if len(sys.argv) != 4 and len(sys.argv) != 5:
         print(
-            "Usage: python3 {} <Eon dump file name> <Eon stakes file name> <Zend accounts file name> <Horizen2 file>"
+            "Usage: check_addresses_balance_from_eon {} <Eon dump file name> <Eon stakes file name> <Zend accounts file name> <Horizen2 file>"
             .format(os.path.basename(__file__)))
         sys.exit(1)
 

@@ -84,7 +84,7 @@ def retrieve_balance_from_zend_dump(dump_file_path):
 def main():
     if len(sys.argv) != 4:
         print(
-            "Usage: python3 {} <mainchain block height> <Zend dump file name> <EON sidechain balance>"
+            "Usage: check_total_balance_from_zend {} <mainchain block height> <Zend dump file name> <EON sidechain balance>"
             .format(os.path.basename(__file__)))
         sys.exit(1)
 

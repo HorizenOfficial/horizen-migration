@@ -14,7 +14,7 @@ def main():
 
 	if len(sys.argv) != 4:
 		print(
-			"Usage: python3 {} <block height> <rpc url> <output_file>"
+			"Usage: get_all_forger_stakes {} <block height> <rpc url> <output_file>"
 			.format(os.path.basename(__file__)))
 		sys.exit(1)
 
