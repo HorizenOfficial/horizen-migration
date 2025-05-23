@@ -41,7 +41,7 @@ create_restore_artifacts.sh <network_type> <zend_dump> <eon_dump> <eon_height> <
   * `<eon_rpc_url>`: (Optional) EON rpc url. If not specified - the official rpc urls will be used, based on *network_type* parameter<br/>
 
 
-Note: If you want to execute manually the process step-by-step, follow the detailed description [here](https://github.com/HorizenOfficial/horizen-migration/tree/pc/migration_bash/dump-scripts/python/README.md) .
+Note: If you want to execute manually the process step-by-step, follow the detailed description [here](https://github.com/HorizenOfficial/horizen-migration/blob/main/dump-scripts/python/README.md) .
 
 ### Next steps:
 
