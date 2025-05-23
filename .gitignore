@@ -2,4 +2,5 @@
 .idea
 .vscode
 .env
+dump-scripts/python/horizen_dump_scripts/__pycache__
 

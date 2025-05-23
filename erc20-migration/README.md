@@ -74,8 +74,6 @@ Usage:
 - In .env file update the entries: 
     - HORIZEN_FOUNDATION=\<address of Horizen Foundation\>. 
     - HORIZEN_DAO=\<address of Horizen DAO\>. 
-    - EON_TOTAL_BALANCE=\<Total ZEN balance restored from EON. It can be retrieved as output of restoreEON task\>
-    - ZEND_TOTAL_BALANCE=\<Total ZEN balance restored from ZEND. It can be retrieved as output of restoreZEND task\>
 -  run <i>npx hardhat finalCheck</i>.
 7. For testing the <i>restoreEON</i> and <i>restoreZEND</i> tasks:
  - run <i>npx hardhat node</i>. This command will run a test node, with some predefined accounts.
@@ -102,4 +100,7 @@ Usage:
 - Update in .env file the entry ZEND_HASH with the hash calculated in the previous step.
 - Run <i>npx hardhat restoreEON</i>
 - Run <i>npx hardhat restoreZEND</i>
-
+8. contractSetup task can verify the deployed contracts. For executing the verification, follow the following steps:
+- Choose a network with an explorer (eg Base Sepolia). Note that verification won't work using the hardhat node.
+- Update in .env file the entry BASE_SEPOLIA_API_KEY or BASE_API_KEY with the API key obtained from the network.
+- run <i>npx hardhat contractSetup --verify</i>. 

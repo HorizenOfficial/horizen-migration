@@ -4,12 +4,13 @@ import json
 
 
 """
-This python script requires the following 3 input parameters:
+This python script requires the following input parameters:
 - EON dump json file, created by "zen_dump" rpc command 
 - EON stakes list json file, created by get_all_forger_stakes.py script
+- the json file with the Ethereum accounts where the some zend addresses were mapped to (optional)
 - Horizen 2 json file created by setup_eon2_json.py script
 
-It will compare addresses and balances between Horizen 2 file and EON dumps.
+It will compare addresses and balances between Horizen 2 file and the other files.
 If something goes wrong (balances don't match or an address is missing), it will be printed in terminal.
 At the end of the execution a message will confirm if the global check was successful or not.
 
@@ -19,7 +20,6 @@ setup_eon2_json.py script will not include them in the Horizen 2 file.
 Then the addresses and the balances related to EON will be checked in search of missing address or mismatch in the balance.
 
 """
-
 NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
 # Global variable to keep track of failed checks
@@ -34,29 +34,35 @@ def is_filtered_account(account_address, eon_dump_data):
     return ('code' in eon_dump_data[account_address]) or (int(eon_dump_data[account_address]['balance']) == 0) or (account_address == NULL_ACCOUNT)
 
 
-# Update the EON balances with stakes, if the address is present in the EON dump update its balance otherwise add the address/balance pair
-def update_eon_dump_with_stakes(eon_dump_data, eon_stakes_data):
-    for account, stake_amount in eon_stakes_data.items():
+# Update the EON balances with accounts from the Eon stakes or from Zend. If the address is present in the EON dump, it updates its balance otherwise add the address/balance pair
+def update_eon_dump(eon_dump_data, additional_data):
+    for account, amount in additional_data.items():
         account = account.lower()
 
         if account in eon_dump_data:
             balance = int(eon_dump_data[account]['balance'])
-            balance += stake_amount
+            balance += amount
             eon_dump_data[account]["balance"] = balance
         else:
-            new_account_with_stake_data = {"balance": stake_amount}
-            eon_dump_data[account] = new_account_with_stake_data
+            new_account = {"balance": amount}
+            eon_dump_data[account] = new_account
     return eon_dump_data
 
 
-def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, horizen2_file_name):
+def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, horizen2_file_name):
     with open(eon_dump_file_name, 'r') as eon_dump_file, open(horizen2_file_name, 'r') as horizen2_file, open(eon_stakes_file_name, 'r') as eon_stakes_file:
         eon_dump = json.load(eon_dump_file)
         horizen2_eon_data = json.load(horizen2_file)
 
         eon_stakes_data = json.load(eon_stakes_file)
 
-        eon_dump_data = update_eon_dump_with_stakes(eon_dump["accounts"], eon_stakes_data)
+        eon_dump_data = update_eon_dump(eon_dump["accounts"], eon_stakes_data)
+
+        if zend_file_name != "":
+            with open(zend_file_name, 'r') as zend_file:
+                zend_data = json.load(zend_file)
+                eon_dump_data = update_eon_dump(eon_dump_data, zend_data)
+
         counter = 0
 
         for horizen2_eon_address, horizen2_eon_address_balance in horizen2_eon_data.items():
@@ -83,21 +89,27 @@ def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, horizen2_file_na
         assert counter == counter_inverse, "Different number of accounts in EON dump data than in Horizen 2"
         print(f"checked {counter} EON addresses")
 
+def main():
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        print(
+            "Usage: check_addresses_balance_from_eon {} <Eon dump file name> <Eon stakes file name> <Zend accounts file name> <Horizen2 file>"
+            .format(os.path.basename(__file__)))
+        sys.exit(1)
 
-if len(sys.argv) != 4:
-    print(
-        "Usage: python3 {} <Eon dump file name> <Eon stakes file name> <Horizen2 file> "
-        .format(os.path.basename(__file__)))
-    sys.exit(1)
 
-eon_dump_file_name = sys.argv[1]
-eon_stakes_file_name = sys.argv[2]
-horizen2_file_name = sys.argv[3]
+    zend_file_name = ""
+    eon_dump_file_name = sys.argv[1]
+    eon_stakes_file_name = sys.argv[2]
+    if len(sys.argv) == 4:
+        horizen2_file_name = sys.argv[3]
+    else:
+        zend_file_name = sys.argv[3]
+        horizen2_file_name = sys.argv[4]
 
-validate_eon_data(eon_dump_file_name, eon_stakes_file_name, horizen2_file_name)
+    validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, horizen2_file_name)
 
-if failed_horizen2_check:
-    print("Horizen 2 address and balance check failed.")
-    sys.exit(1)
-else:
-    print("Horizen 2 address and balance check successful.")
+    if failed_horizen2_check:
+        print("Horizen 2 address and balance check failed.")
+        sys.exit(1)
+    else:
+        print("Horizen 2 address and balance check successful.")

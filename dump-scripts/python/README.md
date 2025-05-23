@@ -2,19 +2,52 @@ This folder contains the scripts used for restoring EON accounts and migrating Z
 
 The data from EON are:
 - the account data, dumped with "zen_dump" rpc command
-- the list of delegators with the amount of their stakes, retrieved using get_all_forger_stakes.py script.
+- the list of delegators with the amount of their stakes, retrieved using `get_all_forger_stakes.py` script.
 The stake amounts are added to the delegator account balance.
 
-The data from Zend are a list of Zend addresses with their balance.   
-**Note:** these addresses are meant to be used and controlled only by the zen claim procedure. Zend users that want to import their balances in Horizen can not
-use these accounts directly, they will need instead to execute the claim procedure and then their coins will be transferred
-to a Horizen account under their control.
+These accounts will be directly restored in the Zen ERC20 smart contract, with the same balances they had in EON, using the EonBackupVault smart contract.
+
+The data from Zend are a list of Zend addresses with their balance.
+These accounts cannot be directly restored in the Zen ERC20 smart contract, because the destination address cannot be automatically determined. 
+So the owners of these accounts that want to import their balances in Horizen 2 will need to execute a claim procedure, specifying
+a Horizen account where their funds will be sent. This claim procedure will be executed using ZenBackupVault smart contract.
+
+**Note:** There can be cases where some Zend accounts cannot be restored using the claim procedure. In that case, 
+the Ethereum address where their funds will be restored will be provided directly off-chain by the owners, using a json file 
+where the Zend accounts are mapped to Ethereum addresses. These accounts will then be restored using the EonBackupVault smart contract, as if they were Eon Accounts.
+
+# Module installation:
+- Execute this command from this folder: 
+
+```sh
+pip install -e .
+```
+
+  (For more recents Ubuntu versions you may be forced to activate an environment first, in this case you can follow these steps: )
+
+  1. Install the Ubuntu package python3-venv:
+
+  ```sh
+  sudo apt update && sudo apt install python3-venv
+  ```
+  2. Activate the environment
+
+  ```sh
+  python3 -m venv .venv
+  source  .venv/bin/activate
+  ```
+
+  3. When completed, in order to exit from the .venv type: deactivate
+
 
 # Workflow
 The workflow should be:
-1. Call zen_dump rpc method on EON at a certain block height and retrieve the resulting file (e.g. eon_dump.json)
-2. Execute get_all_forger_stakes.py script at the same block height used with zen_dump rpc and retrieve the resulting file (e.g. eon_stakes.json)
-3. Execute the dump on Zend (**TBD**). Convert the Zend dump using zend_to_horizen.py and retrieve the resulting file (e.g. horizen_mapped_zend_dump.csv)
+1. Execute the dump on Zend using `dumper` application. 
+2. Convert the Zend dump using `zend_to_horizen.py` script, together with the Zend - Ethereum addresses mapping file if provided, 
+and then retrieve the output files, one for the addresses to be restored using ZenBackupVault smart contract and one for EonBackupVault smart contract.  (e.g. zend_vault_accounts.json and eon_vault_accounts.json).
+3. Call zen_dump rpc method on EON at a certain block height and retrieve the resulting file (e.g. eon_dump.json).
+4. Execute `get_all_forger_stakes` script at the same block height used with zen_dump rpc and retrieve the resulting file (e.g. eon_stakes.json).
+5. Execute `setup_eon2_json` script using as input the eon dump file, the EON stakes file and the file with the Zend accounts mapped to Ethereum addresses.
 
 # Migration Scripts
 
@@ -26,7 +59,7 @@ block height.
 Usage:
 
 ```sh
-$ python3 get_all_forger_stakes.py <block height> <rpc url> <output_file>
+get_all_forger_stakes <block height> <rpc url> <output_file>
 ```
 
 * `<block height>` block height used for the dump.
@@ -36,30 +69,41 @@ $ python3 get_all_forger_stakes.py <block height> <rpc url> <output_file>
 The output is a json file with a list of "account": "amount" items.
 
 ## zend_to_horizen.py
-This script takes as input a csv file containing a list with the Zend addresses and their balance in satoshis and
-creates, as output, a json file with the Base58 decoded zend address and the balance in wei.
+This script takes as input:
+- a csv file containing a list of all the Zend addresses with their balance in satoshis, created by the `dumper` application
+- (Optional) a json file with a list of Zend addresses and their corresponding Ethereum addresses.
+
+It creates as output:
+- a json file with the Base58 decoded Zend addresses and their balances in wei. These addresses will be restored by the ZendBackupVault contract.
+- If <json mapping file> if provided, a json file with the Ethereum addresses defined in the mapping file with the balance in wei of their corresponding Zend addresses. These addresses will be restored by the EonBackupVault contract.
 
 Usage:
 
 ```sh
-$ python3 zend_to_horizen.py <zend csv dump file> <output_file>
+zend_to_horizen <zend csv dump file> <json mapping file> <zend_vault_file> <eon_vault_file>
 ```
+* `<zend csv dump file>` is the csv file created calling Zend `dumper` tool.
+* `<json mapping file>` is the json file with a list of Zend addresses and their corresponding Ethereum addresses. Optional.
+* `<zend_vault_file>` is the output json file with the accounts to be restored by ZendBackupVault contract.
+* `<eon_vault_file>` is the output json file with the accounts to be restored by EonBackupVault contract. Required only if a mapping file is provided. 
 
-The output is a json file with a list of `"decoded address":"balance"` items, alphabetically ordered.
-
+The output is:
+- a json file with a list of `"decoded address":"balance"` items, alphabetically ordered (<zend_vault_file>).
+- a json file with a list of `"Ethereum address":"balance"` items, alphabetically ordered (<eon_vault_file>).
 
 ## setup_eon2_json.py
 
-This script transforms the account data dumped from Eon in the format requested for the migration
+This script transforms the account data dumped from EON in the format requested for the migration
 to Horizen 2.0.
 Usage:
 
 ```sh
-$ python3 setup_eon2_json.py <eon dump file> <eon stake file> <output_file>
+setup_eon2_json <eon dump file> <eon stake file> <eon_vault_file> <output_file>
 ```
 
 * `<eon dump file>` is the json file created calling zen_dump rpc method on EON.
-* `<eon stake file>` is the json file created calling get_all_forger_stakes.py script.
+* `<eon stake file>` is the json file created calling `get_all_forger_stakes.py` script.
+* `<eon_vault_file>` is the json file created calling `zend_to_horizen.py` script with a mapping file.
 * `<output_file>` is the path of the output.
 
 The script creates, as output, a json file in plain format, with a list of `"address":"balance"` items, 
