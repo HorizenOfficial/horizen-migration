@@ -153,7 +153,7 @@ contract ZendBackupVault is Ownable {
         uint256 amount = balances[zenAddress];
         if (amount == 0) revert NothingToClaim(zenAddress);
 
-        //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
+        //address in signed message should respect EIP-55 format (https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md)
         string memory asString = Strings.toChecksumHexString(destAddress);
         string memory strMessageToSign = string(abi.encodePacked(message_prefix, asString));
         bytes32 messageHash = VerificationLibrary.createMessageHash(strMessageToSign);
@@ -201,7 +201,7 @@ contract ZendBackupVault is Ownable {
 
         _verifyPubKeysFromScript(script, pubKeys);
 
-        //address in signed message should respect EIP-55 format (https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md)
+        //address in signed message should respect EIP-55 format (https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md)
         string memory destAddressAsString = Strings.toChecksumHexString(destAddress);
         string memory zenAddressAsString = Strings.toHexString(address(zenAddress));
         string memory strMessageToSign = string(abi.encodePacked(message_prefix, zenAddressAsString, destAddressAsString));
