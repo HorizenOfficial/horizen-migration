@@ -11,7 +11,6 @@ It takes as input:
 Prints  the calculated migration hash 
 """
 
-# Funzione per calcolare l'hash cumulativo aggiornato
 def update_hash(previous_hash: str, address: str, value: int, isEon: bool) -> str:
     keyType = "bytes20"
     if isEon:
@@ -35,7 +34,6 @@ def main():
     input_file_name = sys.argv[1]
     file_type = sys.argv[2]
 
-    # Legge il file JSON e stampa le chiavi
     with open(input_file_name, 'r') as file:
         data = json.load(file)
 
