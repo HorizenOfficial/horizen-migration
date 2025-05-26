@@ -7,7 +7,8 @@ Execute **create_restore_artifacts.sh**  to transform the ZEND and EON dumps in 
 
 ```sh
 cd python
-pip install -e .
+python -m pip install --require-hashes -r requirements.txt
+python -m pip install -e .
 ```
 
   (For more recent Ubuntu versions you may be forced to activate an environment first, in this case you can follow these steps: )
