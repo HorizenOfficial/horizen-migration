@@ -20,7 +20,8 @@ where the Zend accounts are mapped to Ethereum addresses. These accounts will th
 - Execute this command from this folder: 
 
 ```sh
-pip install -e .
+python -m pip install --require-hashes -r requirements.txt
+python -m pip install -e .
 ```
 
   (For more recents Ubuntu versions you may be forced to activate an environment first, in this case you can follow these steps: )
