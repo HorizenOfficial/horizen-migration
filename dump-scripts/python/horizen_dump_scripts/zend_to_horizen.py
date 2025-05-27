@@ -141,4 +141,4 @@ def main():
 		sorted_eon_vault_accounts = collections.OrderedDict(sorted(eon_vault_results.items()))
 
 		with open(eon_vault_result_file_name, "w") as jsonFile:
-			json.dump(eon_vault_results, jsonFile, indent=4)
+			json.dump(sorted_eon_vault_accounts, jsonFile, indent=4)
