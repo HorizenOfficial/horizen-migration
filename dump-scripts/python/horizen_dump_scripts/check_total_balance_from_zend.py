@@ -8,12 +8,13 @@ This python script will require the following input parameters
 - zend dump file path, the zend dump is the one created through the dumper script 
 - EON sidechain balance at the height of the first parameter. It can be retrieved using the following api passing its sidechain ID:
   https://explorer.horizen.io/insight-api/scinfo/37a6ec6f308ef03488f7c2affe56215469d936194ff71c2fe3086aedb718a9fa  
+- the network <mainnet||testnet>
 
 It does the following actions:
 - calculate the total balance from the height parameter through the calculate_total_supply_from_height and 
   remove_shielded_pool_and_sidechains_balance functions. 
 - calculate
-- compare this 2 values, if the difference is above a certain threshold print an error
+- compare these 2 values, if the difference is above a certain threshold print an error
 """
 
 """
@@ -29,15 +30,18 @@ However, during the early days of Horizen’s block history some miners:
 This was due to miners using mining software with settings from Zcash or Zclassic (Zcash had 10 ZEC reward). 
 So the value returned by the function needs to be corrected taking into account these rewards not claimed.
 It is possible to retrieve from zend the current ZEN total supply combining the current utxo set, the shielded pool balance and the balance 
-of all the sidechains and this lead to a difference of 2385.69501304 ZEN.
+of all the sidechains and this lead to a difference of 2385.75181127 ZEN.
 """
 
 DIFFERENCE_THRESHOLD = 5000000 # difference threshold in satoshis
 
 def calculate_total_supply_from_height(height):
     HALVING_INTERVAL = 840000
-    HZN_EARLY_HISTORY_CORRECTION = 238569501304
-
+    HZN_EARLY_HISTORY_CORRECTION_MAINNET = 238575181127
+    HZN_EARLY_HISTORY_CORRECTION_TESTNET = 4773904298
+    HZN_EARLY_HISTORY_CORRECTION = HZN_EARLY_HISTORY_CORRECTION_MAINNET
+    if sys.argv[4] == "testnet":
+        HZN_EARLY_HISTORY_CORRECTION = HZN_EARLY_HISTORY_CORRECTION_TESTNET
     if height == 0:
         return 0
 
@@ -67,8 +71,17 @@ To compare the calculated balance from the balance from the zend dump we need to
   https://explorer.horizen.io/insight-api/scinfo/37a6ec6f308ef03488f7c2affe56215469d936194ff71c2fe3086aedb718a9fa
 """
 def remove_shielded_pool_and_sidechains_balance(balance):
-    SHIELDED_POOL_BALANCE = 2444216819948
-    CEASED_SIDECHAINS_BALANCE= 23873848021
+    SHIELDED_POOL_BALANCE_MAINNET = 2444216819948
+    # everything except eon is considered ceased on mainnet for the purpose of this script
+    CEASED_SIDECHAINS_BALANCE_MAINNET = 23873848021
+    SHIELDED_POOL_BALANCE_TESTNET = 38137452035245
+    # everything except gobi is considered ceased on testnet for the purpose of this script
+    CEASED_SIDECHAINS_BALANCE_TESTNET = 29298651383724
+    SHIELDED_POOL_BALANCE = SHIELDED_POOL_BALANCE_MAINNET
+    CEASED_SIDECHAINS_BALANCE = CEASED_SIDECHAINS_BALANCE_MAINNET
+    if sys.argv[4] == "testnet":
+        SHIELDED_POOL_BALANCE = SHIELDED_POOL_BALANCE_TESTNET
+        CEASED_SIDECHAINS_BALANCE = CEASED_SIDECHAINS_BALANCE_TESTNET
     EON_SIDECHAIN_BALANCE = int(sys.argv[3])
     corrected_balance = balance - SHIELDED_POOL_BALANCE - EON_SIDECHAIN_BALANCE - CEASED_SIDECHAINS_BALANCE
     return corrected_balance
@@ -82,13 +95,14 @@ def retrieve_balance_from_zend_dump(dump_file_path):
     return balance_from_dump
 
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         print(
-            "Usage: check_total_balance_from_zend <mainchain block height> <Zend dump file name> <EON sidechain balance>"
+            "Usage: check_total_balance_from_zend <mainchain block height> <Zend dump file name> <EON sidechain balance> <mainnet||testnet>"
         )
         sys.exit(1)
 
     height = int(sys.argv[1])
+
     calculated_total_supply = calculate_total_supply_from_height(height)
     print(f"Calculated mainchain balance at block {height} is {calculated_total_supply} satoshis")
     total_supply_without_sidechains_and_shielded_pool = remove_shielded_pool_and_sidechains_balance(calculated_total_supply)
