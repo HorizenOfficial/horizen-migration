@@ -74,7 +74,14 @@ def main():
 		zend_vault_results = {}
 		eon_vault_results = {}
 
+		processed_zend_accounts = set()
+
 		for (zend_address, balance_in_satoshi, _) in zend_dump_data_reader:
+			if zend_address in processed_zend_accounts:
+				print(f"Found duplicated address: {zend_address}. Exiting")
+				exit(1)
+
+			processed_zend_accounts.add(zend_address)
 			if not zend_address.startswith("unknown"):
 				if int(balance_in_satoshi) != 0:
 					if zend_address in mapped_addresses:
