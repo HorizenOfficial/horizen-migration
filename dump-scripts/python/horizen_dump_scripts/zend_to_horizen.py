@@ -64,6 +64,7 @@ def main():
 		with open(mapping_file_name, 'r') as mapping_file:
 			mapped_addresses = json.load(mapping_file)
 
+	total_balance_from_zend = 0
 	total_balance_to_zend_vault = 0
 	total_balance_to_eon_vault = 0
 	total_balance_not_migrated = 0
@@ -82,10 +83,12 @@ def main():
 				exit(1)
 
 			processed_zend_accounts.add(zend_address)
+			balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
+			total_balance_from_zend = total_balance_from_zend + balance_in_wei
+			
 			if not zend_address.startswith("unknown"):
-				if int(balance_in_satoshi) != 0:
+				if balance_in_wei != 0:
 					if zend_address in mapped_addresses:
-						balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
 						mapped_eth_address = mapped_addresses[zend_address].lower()
 						if mapped_eth_address in eon_vault_results:
 							eon_vault_results[mapped_eth_address] = eon_vault_results[mapped_eth_address] + balance_in_wei
@@ -98,7 +101,6 @@ def main():
 							decoded_address = base58.b58decode_check(zend_address).hex()
 							# Remove prefix
 							decoded_address = "0x" + decoded_address[4:]
-							balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
 							total_balance_to_zend_vault = total_balance_to_zend_vault + balance_in_wei
 							if decoded_address in zend_vault_results:
 								print(
@@ -117,7 +119,6 @@ def main():
 						"Found address with zero balance: {0}"
 						.format(zend_address))
 			else:
-				balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
 				total_balance_not_migrated = total_balance_not_migrated + balance_in_wei
 				print(
 					"Found an unknown address: {0}, with balance in wei {1}"
@@ -128,9 +129,12 @@ def main():
 		print("\nFound mapped addresses without a balance: ")
 		print(mapped_addresses)
 
-	print("\nTotal balance migrated from Zend to Zend vault: {}".format(total_balance_to_zend_vault))
+	print("\nTotal balance from Zend: {}".format(total_balance_from_zend))
+	print("Total balance migrated from Zend to Zend vault: {}".format(total_balance_to_zend_vault))
 	print("Total balance migrated from Zend to EON vault: {}".format(total_balance_to_eon_vault))
 	print("Total balance not migrated from Zend for unknown addresses: {}".format(total_balance_not_migrated))
+
+	assert total_balance_to_zend_vault + total_balance_to_eon_vault + total_balance_not_migrated == total_balance_from_zend, "balances don't match"
 
 	sorted_zend_vault_accounts = collections.OrderedDict(sorted(zend_vault_results.items()))
 
