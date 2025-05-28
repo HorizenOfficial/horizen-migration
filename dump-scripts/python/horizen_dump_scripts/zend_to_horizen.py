@@ -43,7 +43,7 @@ def main():
 	SATOSHI_TO_WEI_MULTIPLIER = 10 ** 10
 
 	def satoshi_2_wei(value_in_satoshi):
-		return int(round(SATOSHI_TO_WEI_MULTIPLIER * value_in_satoshi))
+		return SATOSHI_TO_WEI_MULTIPLIER * value_in_satoshi
 
 	if len(sys.argv) != 3 and len(sys.argv) != 5:
 		print(

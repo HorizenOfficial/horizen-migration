@@ -24,7 +24,7 @@ def set_failed_execution():
     failed_zend_check = True
 
 def satoshi_2_wei(value_in_satoshi):
-    return int(round(SATOSHI_TO_WEI_MULTIPLIER * value_in_satoshi))
+    return SATOSHI_TO_WEI_MULTIPLIER * value_in_satoshi
 
 def validate_zend_data(zend_dump_file_name, zend_vault_file_name, mapping_file_name=None, eon_vault_file_name=None):
     with open(zend_dump_file_name, 'r') as zend_dump_file, open(zend_vault_file_name, 'r') as zend_vault_file:
