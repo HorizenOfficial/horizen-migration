@@ -5,7 +5,7 @@ import os
 import sys
 
 import base58
-
+from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This script transforms the balances data dumped from zend in the format requested for Horizen. 
 Most accounts will be restored in ZendBackVault contract and they will need to be explicitly claimed by the owners to 
@@ -38,6 +38,7 @@ It creates as output:
  - If the mapping file was provided as input, the list of the accounts to be restored by the EonBackVault contract, as a json file with the format:
     <"Ethereum address":"balance">, alphabetically ordered.
 """
+
 def main():
 	# 10 ^ 10
 	SATOSHI_TO_WEI_MULTIPLIER = 10 ** 10
@@ -62,7 +63,7 @@ def main():
 		zend_vault_result_file_name = sys.argv[3]
 		eon_vault_result_file_name = sys.argv[4]
 		with open(mapping_file_name, 'r') as mapping_file:
-			mapped_addresses = json.load(mapping_file)
+			mapped_addresses = json.load(mapping_file, object_pairs_hook=dict_raise_on_duplicates)
 
 	total_balance_from_zend = 0
 	total_balance_to_zend_vault = 0

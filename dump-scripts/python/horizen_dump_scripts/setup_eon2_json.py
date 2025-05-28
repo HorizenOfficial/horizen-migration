@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This script transforms the account data dumped from Eon in the format requested for the migration
 to Horizen 2.0.
@@ -20,6 +21,9 @@ The following accounts are not saved in the file:
  - smart contract accounts 
  - 0x0000000000000000000000000000000000000000 account
 """
+
+
+
 def main():
 	NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
@@ -41,7 +45,7 @@ def main():
 
 
 	with open(eon_dump_file_name, 'r') as eon_dump_file:
-		eon_dump_data = json.load(eon_dump_file)
+		eon_dump_data = json.load(eon_dump_file, object_pairs_hook=dict_raise_on_duplicates)
 
 	results = {}
 	smart_contract_list = []
@@ -89,7 +93,7 @@ def main():
 
 	# Importing the EON stakes
 	with open(eon_stakes_file_name, 'r') as eon_stakes_file:
-		eon_stakes_data = json.load(eon_stakes_file)
+		eon_stakes_data = json.load(eon_stakes_file, object_pairs_hook=dict_raise_on_duplicates)
 
 	total_stakes = 0
 	for account, stake_amount in eon_stakes_data.items():
@@ -112,7 +116,7 @@ def main():
 	# Importing Ethereum-mapped zend accounts
 	if  len(sys.argv) == 5:
 		with open(eon_vault_automappings_file_name, 'r') as eon_vault_automappings_file:
-			eon_vault_automappings_data = json.load(eon_vault_automappings_file)
+			eon_vault_automappings_data = json.load(eon_vault_automappings_file, object_pairs_hook=dict_raise_on_duplicates)
 			for account, amount in eon_vault_automappings_data.items():
 				account = account.lower()
 				total_balance_mapped = total_balance_mapped + amount
