@@ -102,12 +102,8 @@ def main():
 			# from total_filtered_balance.
 			total_restored_balance = total_restored_balance + stake_amount
 			total_filtered_balance = total_filtered_balance - stake_amount
-			if account in results:
-				balance = results[account]
-				balance = balance + stake_amount
-				results[account] = balance
-			elif stake_amount != 0:
-				results[account] = stake_amount
+			if stake_amount != 0:
+				results[account] = results.get(account, 0) + stake_amount
 		else:
 			print("Delegator {} is a smart contract".format(account))
 			print(" its balance is {}".format(stake_amount))
@@ -122,13 +118,9 @@ def main():
 				total_balance_mapped = total_balance_mapped + amount
 				total_balance = total_balance + amount
 				total_restored_balance = total_restored_balance + amount
+				if amount != 0:
+					results[account] = results.get(account, 0) + amount
 
-				if account in results:
-					balance = results[account]
-					balance = balance + amount
-					results[account] = balance
-				elif amount != 0:
-					results[account] = amount
 
 
 	print("Total balance from EON (EOA + Contracts + Stakes + mapped accounts):               {}".format(total_balance))
