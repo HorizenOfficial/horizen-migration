@@ -27,8 +27,8 @@ def update_hash(previous_hash: str, address: str, value: int, isEon: bool) -> st
 def main():
     if len(sys.argv) != 3 or sys.argv[2] not in {"eon", "zend"}:
         print(
-            "Usage: migrationhash {} <json file> <eon|zend>"
-            .format(os.path.basename(__file__)))
+            "Usage: migrationhash <json file> <eon|zend>"
+        )
         sys.exit(1)
 
     input_file_name = sys.argv[1]
