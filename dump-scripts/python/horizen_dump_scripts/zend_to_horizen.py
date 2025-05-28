@@ -91,10 +91,7 @@ def main():
 				if balance_in_wei != 0:
 					if zend_address in mapped_addresses:
 						mapped_eth_address = mapped_addresses[zend_address].lower()
-						if mapped_eth_address in eon_vault_results:
-							eon_vault_results[mapped_eth_address] = eon_vault_results[mapped_eth_address] + balance_in_wei
-						else:
-							eon_vault_results[mapped_eth_address] = balance_in_wei
+						eon_vault_results[mapped_eth_address] = eon_vault_results.get(mapped_eth_address, 0) + balance_in_wei
 						total_balance_to_eon_vault = total_balance_to_eon_vault + balance_in_wei
 						mapped_addresses.pop(zend_address)
 					else:
