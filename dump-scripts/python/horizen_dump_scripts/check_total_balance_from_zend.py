@@ -5,32 +5,35 @@ import os
 """
 This python script will require the following input parameters
 - mainchain block height related to the mainchain dump
-- zend dump file path, the zend dump is the one created through the dumper script 
-- EON sidechain balance at the height of the first parameter. It can be retrieved using the following api passing its sidechain ID:
-  https://explorer.horizen.io/insight-api/scinfo/37a6ec6f308ef03488f7c2affe56215469d936194ff71c2fe3086aedb718a9fa  
-- the network <mainnet||testnet>
+- zend dump file path, the zend dump is the one created through the dumper script
+- For mainnet the EON sidechain balance at the mainchain height of the first parameter. It can be retrieved using the following api passing its sidechain ID:
+  https://explorer.horizen.io/insight-api/scinfo/37a6ec6f308ef03488f7c2affe56215469d936194ff71c2fe3086aedb718a9fa
+  For testnet the sum of the sidechain balances of PREGOBI and GOBI at the mainchain height of the first parameter. They can be retrieved using the following api passing its sidechain ID:
+  https://explorer-testnet.horizen.io/insight-api/scinfo/1f758350754c12ac8f75a547f745b75eb744b382e15d0d3b0e24a4b5c5acde00
+  https://explorer-testnet.horizen.io/insight-api/scinfo/264a664c87d438b6983e0e071293e0e50b37eb12976eaa2dcd08d6a1ee16ca71
+- the network, either 'mainnet' or 'testnet'
 
 It does the following actions:
-- calculate the total balance from the height parameter through the calculate_total_supply_from_height and 
-  remove_shielded_pool_and_sidechains_balance functions. 
+- calculate the total balance from the height parameter through the calculate_total_supply_from_height and
+  remove_shielded_pool_and_sidechains_balance functions.
 - calculate
 - compare these 2 values, if the difference is above a certain threshold print an error
 """
 
 """
-Regarding total balance calculation, Horizen (like every blockchain based on the bitcoin-core node logic) operates on a deflationary token 
-economy defined by a halving mechanism that occurs every 840,000 blocks. 
-At the outset, miners are rewarded with 1,250,000,000 satoshis (12.5 ZEN) for successfully mining a block. 
-However, this reward is systematically reduced by half after every halving event, creating a diminishing supply rate over time. 
-For instance, after the first halving, the reward drops to 625,000,000 satoshis (6.25 ZEN), and it continues halving every 840,000 blocks. 
+Regarding total balance calculation, Horizen (like every blockchain based on the bitcoin-core node logic) operates on a deflationary token
+economy defined by a halving mechanism that occurs every 840,000 blocks.
+At the outset, miners are rewarded with 1,250,000,000 satoshis (12.5 ZEN) for successfully mining a block.
+However, this reward is systematically reduced by half after every halving event, creating a diminishing supply rate over time.
+For instance, after the first halving, the reward drops to 625,000,000 satoshis (6.25 ZEN), and it continues halving every 840,000 blocks.
 
 However, during the early days of Horizen’s block history some miners:
 - did not claim the full 12.5 ZEN they were eligible to claim
 - did not include transactions fees of transactions included in the block
-This was due to miners using mining software with settings from Zcash or Zclassic (Zcash had 10 ZEC reward). 
+This was due to miners using mining software with settings from Zcash or Zclassic (Zcash had 10 ZEC reward).
 So the value returned by the function needs to be corrected taking into account these rewards not claimed.
-It is possible to retrieve from zend the current ZEN total supply combining the current utxo set, the shielded pool balance and the balance 
-of all the sidechains and this lead to a difference of 2385.75181127 ZEN.
+It is possible to retrieve from zend the current ZEN total supply combining the current utxo set, the shielded pool balance and the balance
+of all the sidechains and this leads to a difference of 2385.75181127 ZEN.
 """
 
 DIFFERENCE_THRESHOLD = 5000000 # difference threshold in satoshis
@@ -47,8 +50,8 @@ def calculate_total_supply_from_height(height):
 
     tot_halvings = (height - 1) // HALVING_INTERVAL
 
-    if tot_halvings >= 64:
-        return 21000000  # max supply reached
+    if tot_halvings >= 32:
+        return 2100000000000000  # max supply reached
 
     supply = 0
     reward = 1250000000  # block reward in satoshis
@@ -71,12 +74,16 @@ To compare the calculated balance from the balance from the zend dump we need to
   https://explorer.horizen.io/insight-api/scinfo/37a6ec6f308ef03488f7c2affe56215469d936194ff71c2fe3086aedb718a9fa
 """
 def remove_shielded_pool_and_sidechains_balance(balance):
+    # mainnet
     SHIELDED_POOL_BALANCE_MAINNET = 2444216819948
-    # everything except eon is considered ceased on mainnet for the purpose of this script
+    # every sidechain except eon is considered ceased on mainnet for the purpose of this script
     CEASED_SIDECHAINS_BALANCE_MAINNET = 23873848021
+
+    # testnet
     SHIELDED_POOL_BALANCE_TESTNET = 38137452035245
-    # everything except gobi is considered ceased on testnet for the purpose of this script
-    CEASED_SIDECHAINS_BALANCE_TESTNET = 29298651383724
+    # every sidechain except pregobi and gobi is considered ceased on testnet for the purpose of this script
+    CEASED_SIDECHAINS_BALANCE_TESTNET = 18089144382722
+
     SHIELDED_POOL_BALANCE = SHIELDED_POOL_BALANCE_MAINNET
     CEASED_SIDECHAINS_BALANCE = CEASED_SIDECHAINS_BALANCE_MAINNET
     if sys.argv[4] == "testnet":
@@ -99,6 +106,9 @@ def main():
         print(
             "Usage: check_total_balance_from_zend <mainchain block height> <Zend dump file name> <EON sidechain balance> <mainnet||testnet>"
         )
+        sys.exit(1)
+    if sys.argv[4] not in ["mainnet", "testnet"]:
+        print("The 4th command line argument has to be either 'mainnet' or 'testnet'.")
         sys.exit(1)
 
     height = int(sys.argv[1])
