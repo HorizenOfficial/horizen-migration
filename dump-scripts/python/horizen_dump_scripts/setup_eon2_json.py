@@ -25,8 +25,8 @@ def main():
 
 	if len(sys.argv) != 4 and len(sys.argv) != 5 :
 		print(
-			"Usage: setup_eon2_json {} <Eon dump file name> <Eon stakes file name> <eon_vault_automappings_file> <output_file>"
-			.format(os.path.basename(__file__)))
+			"Usage: setup_eon2_json <Eon dump file name> <Eon stakes file name> <eon_vault_automappings_file> <output_file>"
+		)
 		sys.exit(1)
 
 	eon_dump_file_name = sys.argv[1]

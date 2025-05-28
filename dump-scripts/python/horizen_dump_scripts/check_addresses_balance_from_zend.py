@@ -104,8 +104,8 @@ def validate_zend_data(zend_dump_file_name, zend_vault_file_name, mapping_file_n
 def main():        
     if len(sys.argv) != 3 and len(sys.argv) != 5:
         print(
-            "Usage: check_addresses_balance_from_zend {} <Zend dump file name> <mapping file> <Zend Vault file> <Eon Vault file>"
-            .format(os.path.basename(__file__)))
+            "Usage: check_addresses_balance_from_zend <Zend dump file name> <mapping file> <Zend Vault file> <Eon Vault file>"
+        )
         sys.exit(1)
 
 

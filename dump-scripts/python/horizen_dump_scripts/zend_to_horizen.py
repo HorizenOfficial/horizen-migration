@@ -47,8 +47,8 @@ def main():
 
 	if len(sys.argv) != 3 and len(sys.argv) != 5:
 		print(
-			"Usage: zend_to_horizen {} <zend dump file name> <mapping file name> <zend_vault_output_file> <eon_vault_automappings_file>"
-			.format(os.path.basename(__file__)))
+			"Usage: zend_to_horizen <zend dump file name> <mapping file name> <zend_vault_output_file> <eon_vault_automappings_file>"
+		)
 		sys.exit(1)
 
 	zend_dump_file_name = sys.argv[1]
