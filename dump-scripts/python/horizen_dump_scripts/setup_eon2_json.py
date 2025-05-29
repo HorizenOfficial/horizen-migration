@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This script transforms the account data dumped from Eon in the format requested for the migration
 to Horizen 2.0.
@@ -20,28 +21,31 @@ The following accounts are not saved in the file:
  - smart contract accounts 
  - 0x0000000000000000000000000000000000000000 account
 """
+
+
+
 def main():
 	NULL_ACCOUNT = "0x0000000000000000000000000000000000000000"
 
 	if len(sys.argv) != 4 and len(sys.argv) != 5 :
 		print(
-			"Usage: setup_eon2_json {} <Eon dump file name> <Eon stakes file name> <eon_vault_automappings_file> <output_file>"
-			.format(os.path.basename(__file__)))
+			"Usage: setup_eon2_json <Eon dump file name> <Eon stakes file name> <eon_vault_automappings_file> <output_file>"
+		)
 		sys.exit(1)
 
 	eon_dump_file_name = sys.argv[1]
 	eon_stakes_file_name = sys.argv[2]
-	zend_file_name = ""
+	eon_vault_automappings_file_name = ""
 
 	if  len(sys.argv) == 4:
 		result_file_name = sys.argv[3]
 	else:
-		zend_file_name = sys.argv[3]
+		eon_vault_automappings_file_name = sys.argv[3]
 		result_file_name = sys.argv[4]
 
 
 	with open(eon_dump_file_name, 'r') as eon_dump_file:
-		eon_dump_data = json.load(eon_dump_file)
+		eon_dump_data = json.load(eon_dump_file, object_pairs_hook=dict_raise_on_duplicates)
 
 	results = {}
 	smart_contract_list = []
@@ -89,7 +93,7 @@ def main():
 
 	# Importing the EON stakes
 	with open(eon_stakes_file_name, 'r') as eon_stakes_file:
-		eon_stakes_data = json.load(eon_stakes_file)
+		eon_stakes_data = json.load(eon_stakes_file, object_pairs_hook=dict_raise_on_duplicates)
 
 	total_stakes = 0
 	for account, stake_amount in eon_stakes_data.items():
@@ -102,39 +106,31 @@ def main():
 			# from total_filtered_balance.
 			total_restored_balance = total_restored_balance + stake_amount
 			total_filtered_balance = total_filtered_balance - stake_amount
-			if account in results:
-				balance = results[account]
-				balance = balance + stake_amount
-				results[account] = balance
-			elif stake_amount != 0:
-				results[account] = stake_amount
+			if stake_amount != 0:
+				results[account] = results.get(account, 0) + stake_amount
 		else:
 			print("Delegator {} is a smart contract".format(account))
 			print(" its balance is {}".format(stake_amount))
 
-	total_from_zend = 0
+	total_balance_mapped = 0
 	# Importing Ethereum-mapped zend accounts
 	if  len(sys.argv) == 5:
-		with open(zend_file_name, 'r') as zend_file:
-			zend_data = json.load(zend_file)
-			for account, amount in zend_data.items():
+		with open(eon_vault_automappings_file_name, 'r') as eon_vault_automappings_file:
+			eon_vault_automappings_data = json.load(eon_vault_automappings_file, object_pairs_hook=dict_raise_on_duplicates)
+			for account, amount in eon_vault_automappings_data.items():
 				account = account.lower()
-				total_from_zend = total_from_zend + amount
+				total_balance_mapped = total_balance_mapped + amount
 				total_balance = total_balance + amount
 				total_restored_balance = total_restored_balance + amount
-
-				if account in results:
-					balance = results[account]
-					balance = balance + amount
-					results[account] = balance
-				elif amount != 0:
-					results[account] = amount
+				if amount != 0:
+					results[account] = results.get(account, 0) + amount
 
 
-	print("Total balance from EON (EOA + Contracts + Stakes + Zend):                          {}".format(total_balance))
+
+	print("Total balance from EON (EOA + Contracts + Stakes + mapped accounts):               {}".format(total_balance))
 	print("Total stakes:                                                                      {}".format(total_stakes))
-	print("Total zend  :                                                                      {}".format(total_from_zend))
-	print("Total balance from EON migrated (EOA + EOA Stakes + Zend):                         {}".format(total_restored_balance))
+	print("Total mapped accounts:                                                             {}".format(total_balance_mapped))
+	print("Total balance from EON migrated (EOA + EOA Stakes + mapped accounts):              {}".format(total_restored_balance))
 	print("Total balance from EON not restored (Contracts + Contracts Stakes + NULL address): {}".format(total_filtered_balance))
 	print("Top 20 NOT migrated contracts by ZEN balance:")
 	top_20_not_migrated_contracts.print_items()

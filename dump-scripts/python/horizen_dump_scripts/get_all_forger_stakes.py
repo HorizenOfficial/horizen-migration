@@ -14,8 +14,8 @@ def main():
 
 	if len(sys.argv) != 4:
 		print(
-			"Usage: get_all_forger_stakes {} <block height> <rpc url> <output_file>"
-			.format(os.path.basename(__file__)))
+			"Usage: get_all_forger_stakes <block height> <rpc url> <output_file>"
+		)
 		sys.exit(1)
 
 	block_height = int(sys.argv[1])
