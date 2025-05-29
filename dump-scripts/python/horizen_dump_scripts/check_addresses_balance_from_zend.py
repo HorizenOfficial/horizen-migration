@@ -4,7 +4,7 @@ import sys
 import csv
 import os
 import base58
-
+from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This python script will require the following input parameters:
 - zend dump csv file created from zend dump script
@@ -29,14 +29,14 @@ def satoshi_2_wei(value_in_satoshi):
 def validate_zend_data(zend_dump_file_name, zend_vault_file_name, mapping_file_name=None, eon_vault_file_name=None):
     with open(zend_dump_file_name, 'r') as zend_dump_file, open(zend_vault_file_name, 'r') as zend_vault_file:
         zend_dump_reader = csv.reader(zend_dump_file)
-        zend_vault_data = json.load(zend_vault_file)
+        zend_vault_data = json.load(zend_vault_file, object_pairs_hook=dict_raise_on_duplicates)
         
         zend_dump_data = {row[0]: int(row[1]) for row in zend_dump_reader} 
 
         if mapping_file_name is not None and eon_vault_file_name is not None:
             with open(mapping_file_name, 'r') as mapping_file, open(eon_vault_file_name, 'r') as eon_vault_file:
-                eon_vault_data = json.load(eon_vault_file)
-                mapping_data = json.load(mapping_file)
+                eon_vault_data = json.load(eon_vault_file, object_pairs_hook=dict_raise_on_duplicates)
+                mapping_data = json.load(mapping_file, object_pairs_hook=dict_raise_on_duplicates)
 
                 resulting_balances = {}
                 for zend_address, eth_address in mapping_data.items():

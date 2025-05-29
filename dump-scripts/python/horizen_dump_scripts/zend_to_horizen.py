@@ -5,7 +5,7 @@ import os
 import sys
 
 import base58
-
+from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This script transforms the balances data dumped from zend in the format requested for Horizen. 
 Most accounts will be restored in ZendBackVault contract and they will need to be explicitly claimed by the owners to 
@@ -38,6 +38,7 @@ It creates as output:
  - If the mapping file was provided as input, the list of the accounts to be restored by the EonBackVault contract, as a json file with the format:
     <"Ethereum address":"balance">, alphabetically ordered.
 """
+
 def main():
 	# 10 ^ 10
 	SATOSHI_TO_WEI_MULTIPLIER = 10 ** 10
@@ -62,7 +63,7 @@ def main():
 		zend_vault_result_file_name = sys.argv[3]
 		eon_vault_result_file_name = sys.argv[4]
 		with open(mapping_file_name, 'r') as mapping_file:
-			mapped_addresses = json.load(mapping_file)
+			mapped_addresses = json.load(mapping_file, object_pairs_hook=dict_raise_on_duplicates)
 
 	total_balance_from_zend = 0
 	total_balance_to_zend_vault = 0
@@ -80,7 +81,7 @@ def main():
 		for (zend_address, balance_in_satoshi, _) in zend_dump_data_reader:
 			if zend_address in processed_zend_accounts:
 				print(f"Found duplicated address: {zend_address}. Exiting")
-				exit(1)
+				sys.exit(1)
 
 			processed_zend_accounts.add(zend_address)
 			balance_in_wei = satoshi_2_wei(int(balance_in_satoshi))
@@ -90,10 +91,7 @@ def main():
 				if balance_in_wei != 0:
 					if zend_address in mapped_addresses:
 						mapped_eth_address = mapped_addresses[zend_address].lower()
-						if mapped_eth_address in eon_vault_results:
-							eon_vault_results[mapped_eth_address] = eon_vault_results[mapped_eth_address] + balance_in_wei
-						else:
-							eon_vault_results[mapped_eth_address] = balance_in_wei
+						eon_vault_results[mapped_eth_address] = eon_vault_results.get(mapped_eth_address, 0) + balance_in_wei
 						total_balance_to_eon_vault = total_balance_to_eon_vault + balance_in_wei
 						mapped_addresses.pop(zend_address)
 					else:
@@ -113,7 +111,7 @@ def main():
 							print(
 								"Error {2} while processing line with address: {0}, balance: {1}. The file is corrupted, exiting."
 								.format(zend_address, balance_in_satoshi, e))
-							exit(-1)
+							sys.exit(1)
 				else:
 					print(
 						"Found address with zero balance: {0}"

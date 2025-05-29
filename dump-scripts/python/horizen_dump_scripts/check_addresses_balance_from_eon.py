@@ -2,7 +2,7 @@ import os
 import sys
 import json
 
-
+from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This python script requires the following input parameters:
 - EON dump json file, created by "zen_dump" rpc command 
@@ -51,16 +51,16 @@ def update_eon_dump(eon_dump_data, additional_data):
 
 def validate_eon_data(eon_dump_file_name, eon_stakes_file_name, zend_file_name, horizen2_file_name):
     with open(eon_dump_file_name, 'r') as eon_dump_file, open(horizen2_file_name, 'r') as horizen2_file, open(eon_stakes_file_name, 'r') as eon_stakes_file:
-        eon_dump = json.load(eon_dump_file)
-        horizen2_eon_data = json.load(horizen2_file)
+        eon_dump = json.load(eon_dump_file, object_pairs_hook=dict_raise_on_duplicates)
+        horizen2_eon_data = json.load(horizen2_file, object_pairs_hook=dict_raise_on_duplicates)
 
-        eon_stakes_data = json.load(eon_stakes_file)
+        eon_stakes_data = json.load(eon_stakes_file, object_pairs_hook=dict_raise_on_duplicates)
 
         eon_dump_data = update_eon_dump(eon_dump["accounts"], eon_stakes_data)
 
         if zend_file_name != "":
             with open(zend_file_name, 'r') as zend_file:
-                zend_data = json.load(zend_file)
+                zend_data = json.load(zend_file, object_pairs_hook=dict_raise_on_duplicates)
                 eon_dump_data = update_eon_dump(eon_dump_data, zend_data)
 
         counter = 0
