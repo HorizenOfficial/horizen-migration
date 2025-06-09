@@ -81,8 +81,9 @@ It creates as output:
 Usage:
 
 ```sh
-zend_to_horizen <zend csv dump file> <json mapping file> <zend_vault_file> <eon_vault_file>
+zend_to_horizen <zend network type> <zend csv dump file> <json mapping file> <zend_vault_file> <eon_vault_file>
 ```
+* `<zend network type>` is the zend network type. It can assume only "mainnet" or "testnet" values. Required only if a mapping file is provided (see below). 
 * `<zend csv dump file>` is the csv file created calling Zend `dumper` tool.
 * `<json mapping file>` is the json file with a list of Zend addresses and their corresponding Ethereum addresses. Optional.
 * `<zend_vault_file>` is the output json file with the accounts to be restored by ZendBackupVault contract.
@@ -108,4 +109,4 @@ setup_eon2_json <eon dump file> <eon stake file> <eon_vault_file> <output_file>
 * `<output_file>` is the path of the output.
 
 The script creates, as output, a json file in plain format, with a list of `"address":"balance"` items, 
-alphabetically ordered. Only the amounts belonging to EOA accounts are included in the file.
+alphabetically ordered. Only the amounts belonging to EOA accounts are included in the file

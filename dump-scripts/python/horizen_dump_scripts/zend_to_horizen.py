@@ -1,10 +1,10 @@
 import collections
 import csv
 import json
-import os
 import sys
-
+from web3 import Web3
 import base58
+import pprint
 from horizen_dump_scripts.utils import dict_raise_on_duplicates
 """
 This script transforms the balances data dumped from zend in the format requested for Horizen. 
@@ -28,16 +28,33 @@ The balances are converted from satoshis (or "zennies") to weis.
 In case more than one zend address is mapped to the same Ethereum address, the balances will be added up.  
 
 This script requires as input:
+ - The mainchain network type the addresses belong to ("mainnet" or "testnet"). Optional, required if the mapping file was provided as input (see below).
  - The dump of the zend accounts with their balances, as a csv file with the following format:
  	<zend address, balance in satoshi>
  - (Optional) The list of the zend addresses to be directly mapped to Ethereum addresses, as a json file with the following format:
     <zend address, Ethereum address>
+    If this parameter is provided, also mainchain network type and the name of the file with the accounts to be restored by the EonBackVault contract must be provided.
 It creates as output:
  - The list of the accounts to be restored by the ZendBackVault contract, as a json file with the format:
 	<"decoded address":"balance">, alphabetically ordered.
  - If the mapping file was provided as input, the list of the accounts to be restored by the EonBackVault contract, as a json file with the format:
     <"Ethereum address":"balance">, alphabetically ordered.
 """
+
+Mainnet_Prefix_List = [
+"2089", # "zn"
+"1CB8", # "t1"
+"2096", # "zs" (it can also appear as "zt" once Base58 encoded)
+"1CBD"  # "t3"
+]
+
+Testnet_Prefix_List = [
+"2098", # "zt"
+"1D25", # "tm"
+"2092", # "zr"
+"1CBA"  # "t2"
+]
+
 
 def main():
 	# 10 ^ 10
@@ -46,24 +63,71 @@ def main():
 	def satoshi_2_wei(value_in_satoshi):
 		return SATOSHI_TO_WEI_MULTIPLIER * value_in_satoshi
 
-	if len(sys.argv) != 3 and len(sys.argv) != 5:
+	if len(sys.argv) != 3 and len(sys.argv) != 6:
 		print(
-			"Usage: zend_to_horizen <zend dump file name> <mapping file name> <zend_vault_output_file> <eon_vault_automappings_file>"
+			"Usage: \n"
+			"      Without automapping file: zend_to_horizen <zend dump file name> <zend_vault_output_file>\n"
+			"      With automapping file: zend_to_horizen <mainnet|testnet> <zend dump file name> <mapping file name> <zend_vault_output_file> <eon_vault_automappings_file>\n"
 		)
 		sys.exit(1)
 
-	zend_dump_file_name = sys.argv[1]
 	mapped_addresses = {}
 
 	if len(sys.argv) == 3:
+		zend_dump_file_name = sys.argv[1]
 		zend_vault_result_file_name = sys.argv[2]
 		eon_vault_result_file_name = None
 	else:
-		mapping_file_name = sys.argv[2]
-		zend_vault_result_file_name = sys.argv[3]
-		eon_vault_result_file_name = sys.argv[4]
+		network_type = sys.argv[1]
+		if network_type != "mainnet" and network_type != "testnet":
+			print(
+				"Wrong network type, it can be only 'mainnet' or 'testnet'"
+			)
+			sys.exit(1)
+
+		zend_dump_file_name = sys.argv[2]
+		mapping_file_name = sys.argv[3]
+		zend_vault_result_file_name = sys.argv[4]
+		eon_vault_result_file_name = sys.argv[5]
 		with open(mapping_file_name, 'r') as mapping_file:
 			mapped_addresses = json.load(mapping_file, object_pairs_hook=dict_raise_on_duplicates)
+			# Sanity checks
+			print("\nChecking automapping addresses.")
+			if network_type == "mainnet":
+				expected_network_prefixes = Mainnet_Prefix_List
+			else:
+				expected_network_prefixes = Testnet_Prefix_List
+			malformed_eth_addresses = []
+			malformed_zend_addresses_with_reasons = []
+			for zend_address, eth_address in mapped_addresses.items():
+				if Web3.is_checksum_address(eth_address) is False:
+					malformed_eth_addresses.append(eth_address)
+				try:
+					decoded_address = base58.b58decode_check(zend_address).hex()
+					network_prefix = decoded_address[:4]
+					if network_prefix not in expected_network_prefixes:
+						print(f"Wrong network type for Mainchain addresses. Expected {network_type}, found {network_prefix}")
+						sys.exit(1)
+
+				except Exception as e:
+					malformed_zend_addresses_with_reasons.append(f"{zend_address}, reason: {e}")
+
+			malformed = False
+			if len(malformed_eth_addresses) != 0:
+				malformed = True
+				print("\nFound malformed Ethereum addresses or not in EIP-55 format: ")
+				pprint.pprint(malformed_eth_addresses)
+
+			if len(malformed_zend_addresses_with_reasons) != 0:
+				malformed = True
+				print("\nFound malformed Zend addresses: ")
+				pprint.pprint(malformed_zend_addresses_with_reasons)
+
+			if malformed:
+				print("\nExiting.")
+				sys.exit(1)
+
+			print("Automapping addresses are correct.\n")
 
 	total_balance_from_zend = 0
 	total_balance_to_zend_vault = 0
