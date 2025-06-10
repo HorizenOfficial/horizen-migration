@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.1
+* Added checks of automapping addresses (checksum and network chain prefix)
+
 ## 1.3.0
 * Added create_restore_artifacts.sh (cumulative bash script for the creation of the restore artifacts)
 * added automappings for off-chain translation of selected addresses during the migration process
