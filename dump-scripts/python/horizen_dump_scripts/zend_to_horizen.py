@@ -107,6 +107,9 @@ def main():
 					network_prefix = decoded_address[:4]
 					if network_prefix not in expected_network_prefixes:
 						print(f"Wrong network type for Mainchain addresses. Expected {network_type}, found {network_prefix}")
+						# The hypothesis is that it is probable that all the addresses belong to the same network and so
+						# that this error is not due to a typo on a single address but to a wrong automapping file instead.
+						# In this case, the script exits immediately.
 						sys.exit(1)
 
 				except Exception as e:
