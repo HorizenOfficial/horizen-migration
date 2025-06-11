@@ -93,7 +93,7 @@ echo ""
 echo "*** Converting zend dump:"
 output_zend="$output_dir/zend.json"
 output_eon_mapping="$output_dir/_automaps.json"
-zend_to_horizen $zend_abs_path $mappings_abs_path $output_zend $output_eon_mapping
+zend_to_horizen $network $zend_abs_path $mappings_abs_path $output_zend $output_eon_mapping
 echo ""
 echo "*** Getting EON stakes at height $eon_height:"
 output_eon_stakes="$output_dir/_eonstakes.json"
