@@ -6,7 +6,8 @@ const createHash = require('create-hash')
 const utils = require("./utils");
 
 describe("ZEND Claim test", function () {
-  const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const ZERO_BYTES32_WITHOUT_PREFIX = "0000000000000000000000000000000000000000000000000000000000000000";
+  const ZERO_BYTES32 = "0x" + ZERO_BYTES32_WITHOUT_PREFIX;
   const ZERO_PUBLICKEY = [ZERO_BYTES32, ZERO_BYTES32];
 
   const TOKEN_NAME = "ZTest";
@@ -107,7 +108,7 @@ describe("ZEND Claim test", function () {
     //direct case
     TEST_DIRECT_BASE_ADDRESS = "0x6ebacd4a2a48728e98aAAA101C59f2e0c57fA987";
     var prefix = '2089'
-    //calculate correspondant zend address
+    //calculate correspondent zend address
     var directZENDTransferAddress = bs58check.encode(
       Buffer.from(
         prefix +
@@ -258,6 +259,21 @@ describe("ZEND Claim test", function () {
     await expect(ZendBackupVault.claimP2PKH(TEST2_DESTINATION_ADDRESS, "0x"+TEST2_SIGNATURE_HEX, TEST2_PUBLICKEY))
          .to.be.revertedWithCustomError(ZendBackupVault, "NothingToClaim")
 
+  });
+
+
+  it("Check claim fails if signature r or s are 0", async function () {
+    await expect(ZendBackupVault.claimP2PKH(TEST2_DESTINATION_ADDRESS, "0x1f" + ZERO_BYTES32_WITHOUT_PREFIX + TEST2_SIGNATURE_HEX.slice(66), TEST2_PUBLICKEY))
+         .to.be.revertedWithCustomError(ZendBackupVault, "InvalidSignature")
+
+    await expect(ZendBackupVault.claimP2PKH(TEST2_DESTINATION_ADDRESS, "0x1f" + TEST2_SIGNATURE_HEX.substring(2, 66)  + ZERO_BYTES32_WITHOUT_PREFIX, TEST2_PUBLICKEY))
+         .to.be.revertedWithCustomError(ZendBackupVault, "InvalidSignature")
+  });
+
+
+  it("Check claim fails if signature v is not 27, 28, 31, 32", async function () {
+    await expect(ZendBackupVault.claimP2PKH(TEST2_DESTINATION_ADDRESS, "0x1d"+TEST2_SIGNATURE_HEX.slice(2), TEST2_PUBLICKEY))
+         .to.be.revertedWithCustomError(ZendBackupVault, "InvalidSignature")
   });
 
   //MULTISIG TESTS

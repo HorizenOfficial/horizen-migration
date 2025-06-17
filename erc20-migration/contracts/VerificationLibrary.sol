@@ -28,6 +28,10 @@ library VerificationLibrary {
             r := mload(add(hexSignature, 33)) //  bytes 1-32
             s := mload(add(hexSignature, 65)) // bytes 33-65 bytes
         }
+        if (v != 27 && v != 28 && v != 31 && v != 32)
+            revert InvalidSignature();
+        if (r == bytes32(0) || s == bytes32(0))
+            revert InvalidSignature();
         // Rejects the “high-s” twin ( s′ = n − s ) that signs the very same message, to avoid S-malleability issues
         if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0)
             revert InvalidSignature();
@@ -36,10 +40,10 @@ library VerificationLibrary {
 
     function verifyZendSignatureBool(bytes32 messageHash, Signature memory signature, bytes32 pubKeyX, bytes32 pubKeyY) internal pure returns(bool) {
         uint8 v_ethereumFormat;
-        if (signature.v == 31 || signature.v==32){
+        if (signature.v == 31 || signature.v == 32) {
             //zend signature from compressed pubkey has +4 in the first byte, but ethereum does not expect this
             v_ethereumFormat = signature.v - 4;
-        }else{
+        } else {
             v_ethereumFormat = signature.v;
         }
         address msgSigner = ecrecover(messageHash, v_ethereumFormat, signature.r, signature.s);
