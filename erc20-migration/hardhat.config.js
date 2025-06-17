@@ -29,6 +29,10 @@ module.exports = {
   },
   defaultNetwork: (process.env.NETWORK || "hardhat"),
   networks: {
+    basemainnet: {
+      url: "https://mainnet.base.org",
+      accounts: accounts
+    },
     basesepolia: {
       url: "https://sepolia.base.org",
       accounts: accounts
