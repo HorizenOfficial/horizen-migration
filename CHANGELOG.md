@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2
+* Added additional checks for signature format in VerificationLibrary
+* Added Testnet snapshot data and signatures
+* Added mainnet migration automappings addresses from an exchange
+
 ## 1.3.1
 * Added checks of automapping addresses (checksum and network chain prefix)
 * Added testnet migration automappings test addresses from an exchange
