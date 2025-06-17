@@ -29,7 +29,7 @@ module.exports = {
   },
   defaultNetwork: (process.env.NETWORK || "hardhat"),
   networks: {
-    basemainnet: {
+    base: {
       url: "https://mainnet.base.org",
       accounts: accounts
     },
