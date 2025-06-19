@@ -1,8 +1,8 @@
 # Changelog
 
 ## 1.3.3
-* Added (optional) priority fee override in migration scripts
 * Fixed contract verification in migration scripts
+* Updated batch lenght for EON loading phase
 
 ## 1.3.2
 * Added additional checks for signature format in VerificationLibrary
