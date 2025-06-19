@@ -226,10 +226,15 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
 
   if (taskArgs.verify) {
     //Contract verification
-    console.log(`Starting contract verification`);
+    const ZenMigrationFactoryAddress = await ZenMigrationFactory.getAddress();
+    console.log(`\n*************************************`);
+    console.log(`Starting contract verification\n`);
+
+    console.log(`------------------------`);
+    console.log(`Starting Migration factory contract verification\n`);
     try {
       await hre.run("verify:verify", {
-        address: await ZenMigrationFactory.getAddress(),
+        address: ZenMigrationFactoryAddress,
         constructorArguments: [
           admin.address
         ],
@@ -242,14 +247,16 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
         exit(-1);
       }
     }
-    console.log(`Migration factory contract verified`);
+    console.log(`Migration factory contract verified\n`);
 
 
+    console.log(`------------------------`);
+    console.log(`Starting Zend vault contract verification\n`);
     try {
       await hre.run("verify:verify", {
         address: await ZenMigrationFactory.zendVault(),
         constructorArguments: [
-          admin.address,
+          ZenMigrationFactoryAddress,
           base_message
         ],
       });
@@ -262,14 +269,15 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
       }
 
     }
-    console.log(`Zend vault contract verified`);
+    console.log(`Zend vault contract verified\n`);
 
-
+    console.log(`------------------------`);
+    console.log(`Starting Eon vault contract verification\n`);
     try {
       await hre.run("verify:verify", {
         address: await ZenMigrationFactory.eonVault(),
         constructorArguments: [
-          admin.address
+          ZenMigrationFactoryAddress
         ],
       });
     }
@@ -281,8 +289,10 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
       }
 
     }
-    console.log(`Eon vault contract verified`);
- 
+    console.log(`Eon vault contract verified\n`);
+
+    console.log(`------------------------`);
+    console.log(`Starting ERC20 contract verification\n`);
     try {
       await hre.run("verify:verify", {
         address: await ZenMigrationFactory.token(),
@@ -303,8 +313,10 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
         exit(-1);
       }
     }
-    console.log(`ERC20 contract verified`);
+    console.log(`ERC20 contract verified\n`);
 
+    console.log(`------------------------`);
+    console.log(`Starting Foundation vesting contract verification\n`);
     try {
 
       await hre.run("verify:verify", {
@@ -324,9 +336,11 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
       }
 
     }
-    console.log(`Foundation vesting contract verified`);
+    console.log(`Foundation vesting contract verified\n`);
 
-    
+
+    console.log(`------------------------`);
+    console.log(`Starting DAO vesting contract verification\n`);
     try {
       await hre.run("verify:verify", {
         address: await ZenMigrationFactory.horizenDaoVestingContract(),
@@ -345,7 +359,10 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
       }
 
     }
-    console.log(`DAO vesting contract verified`);
+    console.log(`DAO vesting contract verified\n`);
+
+    console.log(`Contracts verification ended\n`);
+    console.log(`*************************************`);
   }
 });
 
@@ -749,8 +766,8 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
   }
   const expectedRemainingZenSupply = MAX_ZEN_SUPPLY - zendTotalBalance - eonTotalBalance;
 
-  const expectedDaoZenSupply = expectedRemainingZenSupply * BigInt(6)/BigInt(10);
-  const expectedInitialDaoZenSupply = expectedDaoZenSupply/BigInt(4);
+  const expectedDaoZenSupply = expectedRemainingZenSupply * BigInt(6) / BigInt(10);
+  const expectedInitialDaoZenSupply = expectedDaoZenSupply / BigInt(4);
 
   let zenDaoBalance = await ZENToken.balanceOf(process.env.HORIZEN_DAO);
   console.log("Horizen DAO address balance: " + zenDaoBalance);
@@ -768,20 +785,20 @@ task("finalCheck", "Checks migration results", async (taskArgs, hre) => {
   }
 
   const expectedFoundationZenSupply = expectedRemainingZenSupply - expectedDaoZenSupply;
-  const expectedInitialFoundationZenSupply = expectedFoundationZenSupply/BigInt(4);
+  const expectedInitialFoundationZenSupply = expectedFoundationZenSupply / BigInt(4);
   let zenFoundationBalance = await ZENToken.balanceOf(process.env.HORIZEN_FOUNDATION);
   console.log("Horizen Foundation address balance: " + zenFoundationBalance);
-  if (zenFoundationBalance != expectedInitialFoundationZenSupply){
+  if (zenFoundationBalance != expectedInitialFoundationZenSupply) {
     console.error("Wrong Horizen Foundation balance. Expected balance: {0}, actual balance {1}", expectedInitialFoundationZenSupply, zenFoundationBalance);
-    exit(-1);        
+    exit(-1);
   }
 
   const expectedInitialVestingFoundationZenSupply = expectedFoundationZenSupply - expectedInitialFoundationZenSupply;
   let zenVestingFoundationBalance = await ZENToken.balanceOf(horizenFoundationVestedAddress);
   console.log("Horizen Foundation vesting balance: " + zenVestingFoundationBalance);
-  if (zenVestingFoundationBalance != expectedInitialVestingFoundationZenSupply){
+  if (zenVestingFoundationBalance != expectedInitialVestingFoundationZenSupply) {
     console.error("Wrong Horizen Foundation vesting balance. Expected balance: {0}, actual balance {1}", expectedInitialVestingFoundationZenSupply, zenVestingFoundationBalance);
-    exit(-1);        
+    exit(-1);
   }
 
   console.log("Total balance: " + (zendTotalBalance + eonTotalBalance + zenFoundationBalance + zenVestingFoundationBalance + zenDaoBalance + zenVestingDaoBalance));
