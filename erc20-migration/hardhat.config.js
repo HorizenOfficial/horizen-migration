@@ -16,6 +16,10 @@ else {
     mnemonic: (process.env.MNEMONIC || "")
   }
 }
+
+let priorityFeeInWei = process.env.PRIORITY_FEE || "100"
+let maxFeeInGWei = process.env.MAX_FEE || "0.2"
+
 module.exports = {
   solidity: {
     version: "0.8.27",
@@ -172,8 +176,14 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
 
   const admin = (await ethers.getSigners())[0];
 
+
+  const overrides = {
+    maxPriorityFeePerGas: ethers.parseUnits(priorityFeeInWei, "wei"),
+    maxFeePerGas:ethers.parseUnits(maxFeeInGWei, "gwei")
+  };
+
   let factory = await hre.ethers.getContractFactory(ZEN_FACTORY_CONTRACT_NAME);
-  let ZenMigrationFactory = await factory.deploy(admin);
+  let ZenMigrationFactory = await factory.deploy(admin, overrides);
   let receipt = await ZenMigrationFactory.deploymentTransaction().wait(); // Wait for confirmation
 
   if (receipt.status == 0) {
@@ -194,7 +204,8 @@ task("contractSetup", "Deploys ZEN migration and vesting contracts").addFlag("ve
     process.env.HORIZEN_FOUNDATION_ADMIN,
     process.env.HORIZEN_FOUNDATION,
     process.env.HORIZEN_DAO_ADMIN,
-    process.env.HORIZEN_DAO
+    process.env.HORIZEN_DAO,
+    overrides
   );
 
   receipt = await res.wait();
@@ -404,8 +415,12 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
 
   const EONVault = await hre.ethers.getContractAt(EON_VAULT_CONTRACT_NAME, process.env.EON_VAULT_ADDRESS);
 
+  const overrides = {
+    maxPriorityFeePerGas: ethers.parseUnits(priorityFeeInWei, "wei"),
+    maxFeePerGas:ethers.parseUnits(maxFeeInGWei, "gwei")
+  };
   console.log("Setting final account hash on EONVault");
-  let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash);
+  let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash, overrides);
   let receipt = await res.wait();
   if (receipt.status == 0) {
     console.error("Setting final account hash on EONVault failed! Failed transaction: " + res);
@@ -435,7 +450,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
     if (addressesValues.length == BATCH_LENGTH) {
       console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
       try {
-        let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues);
+        let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
         let receipt = await res.wait();
         totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
         console.log("Gas used: " + receipt.gasUsed);
@@ -461,7 +476,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   if (addressesValues.length > 0) {
     console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
     try {
-      let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues);
+      let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
       let receipt = await res.wait();
       totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
       console.log("Gas used: " + receipt.gasUsed);
@@ -498,7 +513,7 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
   let round = 0;
   while (await EONVault.moreToDistribute()) {
     console.log("Distribution round: " + round);
-    let res = await EONVault.distribute(process.env.DISTRIBUTE_MAX_COUNT);
+    let res = await EONVault.distribute(process.env.DISTRIBUTE_MAX_COUNT, overrides);
     let receipt = await res.wait();
     totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
     console.log("Gas used: " + receipt.gasUsed);
@@ -581,8 +596,13 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
 
   const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
 
+
+  const overrides = {
+    maxPriorityFeePerGas: ethers.parseUnits(priorityFeeInWei, "wei"),
+    maxFeePerGas:ethers.parseUnits(maxFeeInGWei, "gwei")
+  };
   console.log("Setting final account hash on ZENDVault");
-  let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash);
+  let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash, overrides);
   let receipt = await res.wait();
   if (receipt.status == 0) {
     console.error("Setting final account hash on ZENDVault failed! Failed transaction: " + res);
@@ -611,7 +631,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
     if (addressesValues.length == BATCH_LENGTH) {
       console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
       try {
-        let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
+        let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
         let receipt = await res.wait();
         totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
         console.log("Gas used: " + receipt.gasUsed);
@@ -637,7 +657,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   if (addressesValues.length > 0) {
     console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
     try {
-      let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues);
+      let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
       let receipt = await res.wait();
       totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
       console.log("Gas used: " + receipt.gasUsed);
