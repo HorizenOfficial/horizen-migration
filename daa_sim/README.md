@@ -59,9 +59,6 @@ These parameters are directly extracted or derived from the provided C++ `CMainP
     * **Description:** Defines the maximum percentage increase in the `nActualTimespan` allowed. This translates to a maximum percentage *decrease* in difficulty. A value of `32` means `nActualTimespan` cannot be more than `(100 + 32)% = 132%` of the target window timespan.
     * **C++ Reference:** `consensus.nPowMaxAdjustDown`. Used in `MaxActualTimespan()`.
 
-* `DAA_MAX_DIFFICULTY_FACTOR` and `DAA_MIN_DIFFICULTY_FACTOR`:
-    * **Note:** These variables are present in the Python script for historical context but are no longer directly used as parameters in the `compute_next_difficulty` function call, as the clamping logic now directly uses `nPowMaxAdjustUp_percent` and `nPowMaxAdjustDown_percent` according to the C++ formulas.
-
 ---
 
 ## 3. Core Simulation Logic Explained
@@ -160,16 +157,50 @@ This is the core function that implements the Horizen DAA logic to calculate the
 
 ---
 
-## 4. Simulation Analysis / Output Metrics
 
-The script provides detailed logging in the console after the simulation runs:
+# How to run the simulation (Ubuntu)
 
-* **Final Block Time:** The `block_time` of the very last block simulated.
-* **Final Difficulty:** The `difficulty` of the very last block simulated.
-* **Time for 100 blocks at target block time without hashrate drop:**
-    * Calculates the ideal time it *should* take to mine 100 blocks if the network consistently maintained the `target_block_time`.
-    * Presented in `hours h minutes m seconds.xx s` format for clarity.
-* **Time taken for 100 blocks after hashrate drop:**
-    * Measures the actual time elapsed between Block `drop_height` (start of hashrate drop) and Block `drop_height + 100`.
-    * Presented in `hours h minutes m seconds.xx s` format for clarity.
-    * Includes the `Average time per block in this period`. This metric is crucial for evaluating how effectively the DAA adjusted to the hashrate change and brought the block time back towards the target average.
+Install venv module if necessary:
+
+``` bash
+sudo apt update
+sudo apt install python3-venv
+```
+
+Create a virtual environment:
+
+```
+python3 -m venv venv
+```
+
+Activate it:
+
+```
+source venv/bin/activate
+```
+
+Install required packages:
+
+```
+pip install -r requirements.txt
+```
+
+Edit the script if necessary for modifying some parameters and run with:
+
+```
+python3 difficulty_adj_algo_sim.py
+```
+
+```
+Simulation complete. Final Block Time: 150.00s
+Final Difficulty: 0.3000
+------------------------------------------------
+Time for 100 blocks at target block time without hashrate drop (150s):
+Total: 4h 10m 0.00s (15000.00 seconds)
+------------------------------------------------
+Time taken for 100 blocks after hashrate drop (from Block 100 to Block 200):
+Total: 6h 18m 3.99s (22683.99 seconds)
+Average time per block in this period: 226.84 seconds/block
+------------------------------------------------
+Simulation plot saved at: ./horizen_daa_simulation.png`
+```
