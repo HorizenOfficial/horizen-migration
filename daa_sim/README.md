@@ -51,11 +51,11 @@ These parameters are directly extracted or derived from the provided C++ `CMainP
     * **Description:** The window size used for calculating the Median Time-Past (MTP) of a block. The MTP is the median of the timestamps of the last `MTP_SIZE` blocks. This ensures robustness against timestamp manipulation.
     * **C++ Reference:** Typically defined as `nMedianTimeSpan` in `src/chain.h` or `src/consensus/consensus.h`.
 
-* `nPowMaxAdjustUp_percent = 16`:
+* `nPowMaxAdjustUpPercent = 16`:
     * **Description:** Defines the maximum percentage decrease in the `nActualTimespan` allowed. This translates to a maximum percentage *increase* in difficulty. A value of `16` means `nActualTimespan` cannot be less than `(100 - 16)% = 84%` of the target window timespan.
     * **C++ Reference:** `consensus.nPowMaxAdjustUp`. Used in `MinActualTimespan()`.
 
-* `nPowMaxAdjustDown_percent = 32`:
+* `nPowMaxAdjustDownPercent = 32`:
     * **Description:** Defines the maximum percentage increase in the `nActualTimespan` allowed. This translates to a maximum percentage *decrease* in difficulty. A value of `32` means `nActualTimespan` cannot be more than `(100 + 32)% = 132%` of the target window timespan.
     * **C++ Reference:** `consensus.nPowMaxAdjustDown`. Used in `MaxActualTimespan()`.
 
@@ -65,15 +65,15 @@ These parameters are directly extracted or derived from the provided C++ `CMainP
 
 The simulation proceeds block by block, updating the blockchain state (timestamps, difficulties) and calculating the next difficulty based on the DAA.
 
-### 3.1 `block_time` Calculation
+### 3.1 `blockTime` Calculation
 
-The `block_time` for each simulated block is calculated deterministically based on the current network conditions:
+The `blockTime` for each simulated block is calculated deterministically based on the current network conditions:
 
-$$ \mathrm{block\_time} = \mathrm{target\_block\_time} \times \frac{\mathrm{current\_difficulty}}{\mathrm{current\_hashrate}} $$
+$$ \mathrm{blockTime} = \mathrm{targetBlockTime} \times \frac{\mathrm{currentDifficulty}}{\mathrm{currentHashrate}} $$
 
-* `target_block_time`: The desired constant block interval (e.g., 150 seconds).
-* `current_difficulty`: The difficulty value set for the current block.
-* `current_hashrate`: The total hashing power of the network at the current block height.
+* `targetBlockTime`: The desired constant block interval (e.g., 150 seconds).
+* `currentDifficulty`: The difficulty value set for the current block.
+* `currentHashrate`: The total hashing power of the network at the current block height.
 
 ### 3.2 `get_median_time_past(current_height, ts_list, window_mtp=MTP_SIZE)`
 
@@ -109,9 +109,9 @@ This is the core function that implements the Horizen DAA logic to calculate the
     ```python
     nLastBlockTime = get_median_time_past(current_height, ts_list)
     nFirstBlockTime = get_median_time_past(current_height - daa_window_size, ts_list)
-    nActualTimespan_raw = nLastBlockTime - nFirstBlockTime
+    nActualTimespanRaw = nLastBlockTime - nFirstBlockTime
     ```
-* **Explanation:** This calculates the difference between the MTP of the current block (`pindexLast`) and the MTP of the block exactly `DAA_WINDOW_SIZE` (17) blocks ago (`pindexFirst` in C++). This ensures `nActualTimespan_raw` correctly measures the time over the full DAA window.
+* **Explanation:** This calculates the difference between the MTP of the current block (`pindexLast`) and the MTP of the block exactly `DAA_WINDOW_SIZE` (17) blocks ago (`pindexFirst` in C++). This ensures `nActualTimespanRaw` correctly measures the time over the full DAA window.
 * **C++ Reference:** `int64_t nActualTimespan = nLastBlockTime - nFirstBlockTime;` in `CalculateNextWorkRequired`, where `nFirstBlockTime` corresponds to `pindexFirst->GetMedianTimePast()` after `pindexFirst` has been moved back `DAA_WINDOW_SIZE` times.
 
 #### 4. Apply Dampening to `nActualTimespan`
@@ -119,26 +119,26 @@ This is the core function that implements the Horizen DAA logic to calculate the
 * **Purpose:** To smooth out the `nActualTimespan` and make the difficulty adjustment less volatile by limiting the immediate impact of deviations.
 * **Logic:**
     $$
-    \mathrm{nActualTimespan\_dampened} = \mathrm{target\_window\_timespan} + \frac{\mathrm{nActualTimespan\_raw} - \mathrm{target\_window\_timespan}}{4}
+    \mathrm{nActualTimespanDampened} = \mathrm{targetWindowTimespan} + \frac{\mathrm{nActualTimespanRaw} - \mathrm{targetWindowTimespan}}{4}
     $$
-    Where `target_window_timespan = target_spacing * daa_window_size` (e.g., $150 \times 17 = 2550$ seconds).
-* **Explanation:** Only 25% of the deviation from the `target_window_timespan` is applied.
+    Where `targetWindowTimespan = target_spacing * daa_window_size` (e.g., $150 \times 17 = 2550$ seconds).
+* **Explanation:** Only 25% of the deviation from the `targetWindowTimespan` is applied.
 * **C++ Reference:** `nActualTimespan = params.AveragingWindowTimespan() + (nActualTimespan - params.AveragingWindowTimespan())/4;`
 
 #### 5. Apply Clamping to Dampened `nActualTimespan`
 
-* **Purpose:** To set hard limits on the maximum and minimum values that `nActualTimespan_dampened` can take, based on the `nPowMaxAdjustUp_percent` and `nPowMaxAdjustDown_percent` parameters.
+* **Purpose:** To set hard limits on the maximum and minimum values that `nActualTimespanDampened` can take, based on the `nPowMaxAdjustUpPercent` and `nPowMaxAdjustDownPercent` parameters.
 * **Logic:**
     $$
-    \mathrm{min\_actual\_timespan\_clamped} = \mathrm{target\_window\_timespan} \times \frac{(100 - \mathrm{nPowMaxAdjustUp\_percent})}{100}
+    \mathrm{minActualTimespanClamped} = \mathrm{targetWindowTimespan} \times \frac{(100 - \mathrm{nPowMaxAdjustUpPercent})}{100}
     $$
     $$
-    \mathrm{max\_actual\_timespan\_clamped} = \mathrm{target\_window\_timespan} \times \frac{(100 + \mathrm{nPowMaxAdjustDown\_percent})}{100}
+    \mathrm{maxActualTimespanClamped} = \mathrm{targetWindowTimespan} \times \frac{(100 + \mathrm{nPowMaxAdjustDownPercent})}{100}
     $$
-    The `nActualTimespan_dampened` is then constrained within these values.
+    The `nActualTimespanDampened` is then constrained within these values.
 * **Effective Difficulty Adjustment Factors:**
-    * **Maximum Difficulty Increase:** If `nActualTimespan_dampened` hits `min_actual_timespan_clamped`, the difficulty increases by a factor of $\frac{100}{(100 - \mathrm{nPowMaxAdjustUp\_percent})} = \frac{100}{(100 - 16)} = \frac{100}{84} \approx 1.19$ (approx. 19% increase).
-    * **Maximum Difficulty Decrease:** If `nActualTimespan_dampened` hits `max_actual_timespan_clamped`, the difficulty decreases by a factor of $\frac{100}{(100 + \mathrm{nPowMaxAdjustDown\_percent})} = \frac{100}{(100 + 32)} = \frac{100}{132} \approx 0.757$ (approx. 24.3% decrease).
+    * **Maximum Difficulty Increase:** If `nActualTimespanDampened` hits `minActualTimespanClamped`, the difficulty increases by a factor of $\frac{100}{(100 - \mathrm{nPowMaxAdjustUpPercent})} = \frac{100}{(100 - 16)} = \frac{100}{84} \approx 1.19$ (approx. 19% increase).
+    * **Maximum Difficulty Decrease:** If `nActualTimespanDampened` hits `maxActualTimespanClamped`, the difficulty decreases by a factor of $\frac{100}{(100 + \mathrm{nPowMaxAdjustDownPercent})} = \frac{100}{(100 + 32)} = \frac{100}{132} \approx 0.757$ (approx. 24.3% decrease).
 * **C++ Reference:** `if (nActualTimespan < params.MinActualTimespan())` and `if (nActualTimespan > params.MaxActualTimespan())`, where `MinActualTimespan()` and `MaxActualTimespan()` are calculated using the percentage logic.
 
 #### 6. Retarget (Calculate New Difficulty)
@@ -146,13 +146,13 @@ This is the core function that implements the Horizen DAA logic to calculate the
 * **Purpose:** To compute the new mining difficulty for the next block based on the averaged targets and the adjusted actual timespan.
 * **Logic:**
     ```python
-    new_target_simulated = bnAvg_simulated * (nActualTimespan_dampened / target_window_timespan)
+    new_target_simulated = bnAvg_simulated * (nActualTimespanDampened / targetWindowTimespan)
     new_difficulty = 1.0 / new_target_simulated
     ```
 * **Formula (Target-based):**
-    $$ \mathrm{New\_Target} = \mathrm{Average\_Target} \times \frac{\mathrm{nActualTimespan\_dampened}}{\mathrm{target\_window\_timespan}} $$
+    $$ \mathrm{NewTarget} = \mathrm{AverageTarget} \times \frac{\mathrm{nActualTimespanDampened}}{\mathrm{targetWindowTimespan}} $$
 * **Formula (Difficulty-based):**
-    $$ \mathrm{New\_Difficulty} = \frac{1.0}{\mathrm{New\_Target}} $$
+    $$ \mathrm{NewDifficulty} = \frac{1.0}{\mathrm{NewTarget}} $$
 * **C++ Reference:** `bnNew = bnAvg / params.AveragingWindowTimespan() * nActualTimespan;` where `bnNew` is the new target.
 
 ---
