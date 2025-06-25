@@ -93,6 +93,8 @@ const ZEN_TOKEN_CONTRACT_NAME = "ZenToken"
 const ZEN_FACTORY_CONTRACT_NAME = "ZenMigrationFactory"
 const VESTING_CONTRACT_NAME = "LinearTokenVesting"
 
+const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000"
+
 function loadAccountsFromFile(fileName) {
   const jsonFile = fs.readFileSync(fileName, 'utf-8');
   const jsonData = JSONbig.parse(jsonFile);
@@ -115,7 +117,7 @@ function updateZENDCumulativeHash(previousHash, address, value) {
 
 function prepareCumulativeHash(accounts, hashFunc) {
 
-  let finalCumAccountHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  let finalCumAccountHash = ZERO_HASH;
   for (const [address, balance] of accounts) {
     finalCumAccountHash = hashFunc(finalCumAccountHash, address, balance);
   }
@@ -413,19 +415,30 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
 
   const EONVault = await hre.ethers.getContractAt(EON_VAULT_CONTRACT_NAME, process.env.EON_VAULT_ADDRESS);
 
-  
   const overrides = prepareOverrides(priorityFeeInWei, maxFeeInGWei);
 
-  console.log("Setting final account hash on EONVault");
-  let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash, overrides);
+  let cumulativeHash = await EONVault.cumulativeHashCheckpoint();
+  if (cumulativeHash == ZERO_HASH) {
+    console.log("Setting final account hash on EONVault");
 
-  let receipt = await res.wait();
-  if (receipt.status == 0) {
-    console.error("Setting final account hash on EONVault failed! Failed transaction: " + res);
-    exit(-1);
+    let res = await EONVault.setCumulativeHashCheckpoint(finalCumAccountHash, overrides);
+
+    let receipt = await res.wait();
+    if (receipt.status == 0) {
+      console.error("Setting final account hash on EONVault failed! Failed transaction: " + res);
+      exit(-1);
+    }
+    console.log("Setting final account hash on EONVault OK");
+    
   }
+  else {
+    console.log("WARNING: Final account hash on EONVault already set");
+    if (cumulativeHash != process.env.EON_HASH) {
+      console.error("Wrong final account hash on EONVault! Expected: " + process.env.EON_HASH + ", found: " + cumulativeHash);
+      exit(-1);
+    }
 
-  console.log("Setting final account hash on EONVault OK");
+  }
 
 
   console.log("\n\n***************************************************************");
@@ -434,19 +447,64 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
 
   const BATCH_LENGTH = 250;
   let addressesValues = [];
-  let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  let calcCumulativeHash = ZERO_HASH;
   let batchNumber = 1;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
   let totalBatchNumber = Math.ceil(accounts.length / BATCH_LENGTH);
 
-  for (const [address, balance] of accounts) {
-    totalBalance = totalBalance + BigInt(balance);
-    addressesValues.push({ addr: address, value: balance });
-    calcCumulativeHash = updateEONCumulativeHash(calcCumulativeHash, address, balance);
+  
+  let lastInsertedHash = await EONVault._cumulativeHash();
 
-    if (addressesValues.length == BATCH_LENGTH) {
-      console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
+  if (lastInsertedHash == process.env.EON_HASH) {
+    console.log(`Restore on EONVault already completed. Skipping to distribution phase.`);
+  }
+  else {
+
+    let isRestarted = lastInsertedHash != ZERO_HASH; //not finished yet but already started 
+
+    for (const [address, balance] of accounts) {
+      totalBalance = totalBalance + BigInt(balance);
+      addressesValues.push({ addr: address, value: balance });
+      calcCumulativeHash = updateEONCumulativeHash(calcCumulativeHash, address, balance);
+
+      if (addressesValues.length == BATCH_LENGTH) {
+        if (isRestarted) {
+          console.log(`Batch ${batchNumber} of ${totalBatchNumber} already inserted. Skipping.`);
+          if (calcCumulativeHash == lastInsertedHash)
+            isRestarted = false;
+        }
+        else {
+          console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
+          try {
+            let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
+
+            let receipt = await res.wait();
+            totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
+            console.log("Gas used: " + receipt.gasUsed);
+            console.log("Cumulative gas used: " + totalUsedGas);
+            if (receipt.status == 0) {
+              console.error("Inserting batch: " + batchNumber + " failed! Failed transaction: " + res);
+              exit(-1);
+            }
+            else {
+              console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
+              
+            }
+          }
+          catch (error) {
+            console.log("Error inserting batch " + batchNumber);
+            console.log(error);
+            exit(-1);
+          }
+        }
+        batchNumber++;
+        addressesValues = [];
+      }
+    }
+
+    if (addressesValues.length > 0) {
+      console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
       try {
         let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
 
@@ -463,49 +521,28 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
         }
       }
       catch (error) {
-        console.log("Error inserting batch " + batchNumber);
+        console.log("Error inserting batch: " + batchNumber);
         console.log(error);
         exit(-1);
       }
-      batchNumber++;
-      addressesValues = [];
     }
-  }
 
-  if (addressesValues.length > 0) {
-    console.log(`Inserting last batch ${batchNumber} of ${totalBatchNumber}`);
-    try {
-      let res = await EONVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
-
-      let receipt = await res.wait();
-      totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
-      console.log("Gas used: " + receipt.gasUsed);
-      console.log("Cumulative gas used: " + totalUsedGas);
-      if (receipt.status == 0) {
-        console.error("Inserting batch: " + batchNumber + " failed! Failed transaction: " + res);
-        exit(-1);
-      }
-      else {
-        console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
-      }
-    }
-    catch (error) {
-      console.log("Error inserting batch: " + batchNumber);
-      console.log(error);
+    console.log("Checking final hash");
+    let finalHash = await EONVault._cumulativeHash();
+    if (finalHash != finalCumAccountHash) {
+      console.log("Wrong final account hash. Expected: " + finalCumAccountHash + ", actual: " + finalHash);
       exit(-1);
     }
+    console.log("Correct final hash reached");
+
+    console.log("End loading accounts");
+
   }
 
-  console.log("Checking final hash");
-  let finalHash = await EONVault._cumulativeHash();
-  if (finalHash != finalCumAccountHash) {
-    console.log("Wrong final account hash. Expected: " + finalCumAccountHash + ", actual: " + finalHash);
+  if (await EONVault.moreToDistribute() == false){
+    console.log("Token distribution already executed. Exiting");
     exit(-1);
   }
-  console.log("Correct final hash reached");
-
-  console.log("End loading accounts");
-
 
   console.log("\n\n***************************************************************");
   console.log("                   Start distributing tokens");
@@ -528,6 +565,8 @@ task("restoreEON", "Restores EON accounts", async (taskArgs, hre) => {
     }
     round++;
   }
+  console.log("Token distribution ended successfully");
+
 });
 
 task("checkDistributedEON", "Checks distributed EON tokens", async (taskArgs, hre) => {
@@ -588,6 +627,7 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
   console.log("Final ZEND account hash: ", finalCumAccountHash);
 
   console.log("Checking that ZEND final account hash is the expected one");
+
   if (finalCumAccountHash != process.env.ZEND_HASH) {
     console.error("Calculated ZEND final account hash doesn't match with expected hash. Expected hash: " + process.env.ZEND_HASH +
       ", actual hash: " + finalCumAccountHash);
@@ -597,18 +637,30 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
 
   const ZENDVault = await hre.ethers.getContractAt(ZEND_VAULT_CONTRACT_NAME, process.env.ZEND_VAULT_ADDRESS);
 
-  console.log("Setting final account hash on ZENDVault");
-
   const overrides = prepareOverrides(priorityFeeInWei, maxFeeInGWei);
-  let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash, overrides);
 
-  let receipt = await res.wait();
-  if (receipt.status == 0) {
-    console.error("Setting final account hash on ZENDVault failed! Failed transaction: " + res);
-    exit(-1);
+  let cumulativeHash = await ZENDVault.cumulativeHashCheckpoint();
+  if (cumulativeHash == ZERO_HASH) {
+    console.log("Setting final account hash on ZENDVault");
+
+    let res = await ZENDVault.setCumulativeHashCheckpoint(finalCumAccountHash, overrides);
+
+    let receipt = await res.wait();
+    if (receipt.status == 0) {
+      console.error("Setting final account hash on ZENDVault failed! Failed transaction: " + res);
+      exit(-1);
+    }
+
+    console.log("Setting final account hash on ZENDVault OK");
   }
+  else {
+    console.log("WARNING: Final account hash on ZENDVault already set");
+    if (cumulativeHash != process.env.ZEND_HASH) {
+      console.error("Wrong final account hash on ZENDVault! Expected: " + process.env.ZEND_HASH + ", found: " + cumulativeHash);
+      exit(-1);
+    }
 
-  console.log("Setting final account hash on ZENDVault OK");
+  }
 
   console.log("\n\n***************************************************************");
   console.log("                      Start loading accounts");
@@ -616,11 +668,20 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
 
   const BATCH_LENGTH = 500;
   let addressesValues = [];
-  let calcCumulativeHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  let calcCumulativeHash = ZERO_HASH;
   let batchNumber = 1;
   let totalUsedGas = BigInt(0);
   let totalBalance = BigInt(0);
   let totalBatchNumber = Math.ceil(accounts.length / BATCH_LENGTH);
+
+  let lastInsertedHash = await ZENDVault._cumulativeHash();
+
+  if (lastInsertedHash == process.env.ZEND_HASH){
+    console.log(`Restore on ZendVault already completed. Exiting.`);
+    exit(-1);
+  }
+
+  let isRestarted = lastInsertedHash != ZERO_HASH; //not finished yet but already started
 
   for (const [address, balance] of accounts) {
     totalBalance = totalBalance + BigInt(balance);
@@ -628,27 +689,36 @@ task("restoreZEND", "Restores ZEND accounts", async (taskArgs, hre) => {
     calcCumulativeHash = updateZENDCumulativeHash(calcCumulativeHash, address, balance);
 
     if (addressesValues.length == BATCH_LENGTH) {
-      console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
-      try {
+      if (isRestarted) {
+        console.log(`Batch ${batchNumber} of ${totalBatchNumber} already inserted. Skipping.`);
+        if (calcCumulativeHash == lastInsertedHash){
+         isRestarted = false;
+        }
+       }
+      else {
+        console.log(`Inserting batch ${batchNumber} of ${totalBatchNumber}`);
+        try {
 
-        let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
-        let receipt = await res.wait();
-        totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
-        console.log("Gas used: " + receipt.gasUsed);
-        console.log("Cumulative gas used: " + totalUsedGas);
-        if (receipt.status == 0) {
-          console.error("Inserting batch: " + batchNumber + " failed! Failed transaction: " + res);
+          let res = await ZENDVault.batchInsert(calcCumulativeHash, addressesValues, overrides);
+          let receipt = await res.wait();
+          totalUsedGas = totalUsedGas + BigInt(receipt.gasUsed);
+          console.log("Gas used: " + receipt.gasUsed);
+          console.log("Cumulative gas used: " + totalUsedGas);
+          if (receipt.status == 0) {
+            console.error("Inserting batch: " + batchNumber + " failed! Failed transaction: " + res);
+            exit(-1);
+          }
+          else {
+            console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
+          }
+        }
+        catch (error) {
+          console.log("Error inserting batch " + batchNumber);
+          console.log(error);
           exit(-1);
         }
-        else {
-          console.log(`Inserted batch ${batchNumber} of ${totalBatchNumber}`);
-        }
       }
-      catch (error) {
-        console.log("Error inserting batch " + batchNumber);
-        console.log(error);
-        exit(-1);
-      }
+
       batchNumber++;
       addressesValues = [];
     }
