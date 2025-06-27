@@ -2,6 +2,7 @@
 
 ## 1.3.4
 * [scripts] Added optional variables to explicitly set max fee and priority fee
+* [scripts] Support for resuming a loading process after an interrupt
 
 ## 1.3.3
 * [scripts] Fixed contract verification in migration scripts
