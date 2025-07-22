@@ -1,6 +1,6 @@
 [project]
 name = "horizen_dump_scripts"
-version = "1.3.3"
+version = "1.3.4"
 authors = [
     { name="Horizen - Zen Blockchain Foundation", email="infrastructure@zensystem.io" },
 ]
