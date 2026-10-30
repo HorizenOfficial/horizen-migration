@@ -1,0 +1,206 @@
+# Horizen DAA Simulation
+
+This document provides a Python script that simulates the Horizen **Difficulty Adjustment Algorithm (DAA)**. This simulation is deterministic, meaning it omits random fluctuations in block times to demonstrate the DAA's adjustment behavior. The formulas and logic are derived from the Horizen codebase. See especially:
+
+https://github.com/HorizenOfficial/zen/blob/main/src/pow.cpp
+
+https://github.com/HorizenOfficial/zen/blob/main/src/chainparams.cpp
+
+https://github.com/HorizenOfficial/zen/blob/main/src/chain.h
+
+https://github.com/HorizenOfficial/zen/blob/main/src/consensus/params.h
+
+---
+
+## 1. Simulation Parameters
+
+These parameters define the environment and conditions for the simulation:
+
+* `target_block_time = 150` (seconds):
+    * **Description:** The desired average time (in seconds) that should elapse between the mining of consecutive blocks on the blockchain. For Horizen, this is typically 2.5 minutes.
+    * **C++ Reference:** Corresponds to `consensus.nPowTargetSpacing` in the C++ `Consensus::Params`.
+
+* `initial_difficulty = 1.0`:
+    * **Description:** A normalized starting value for the blockchain's mining difficulty. In this simulation, `1.0` serves as a baseline where, with an `initial_hashrate` of `1.0`, the `target_block_time` is perfectly achieved.
+    * **C++ Reference:** Conceptually related to the `powLimit` for the genesis block in C++, which represents the easiest possible difficulty.
+
+* `initial_hashrate = 1.0`:
+    * **Description:** A normalized starting value for the total computational power (hashrate) contributed by all miners on the network.
+    * **C++ Reference:** No direct equivalent in C++ parameters, as hashrate is an external, dynamic network variable.
+
+* `hashrate_drop_factor = 0.3`:
+    * **Description:** The factor by which the `initial_hashrate` will be multiplied to simulate a sudden decrease in network mining power. A value of `0.3` implies a 70% drop (new hashrate will be 30% of the initial).
+
+* `drop_height = 100`:
+    * **Description:** The specific block height at which the simulated `hashrate_drop_factor` is applied.
+
+* `num_blocks = 500`:
+    * **Description:** The total number of blocks for which the simulation will run. This value should be sufficiently large to observe the DAA's convergence behavior and allow for post-drop analysis (e.g., `drop_height + 100` blocks for the analysis printed in the console).
+
+---
+
+## 2. Horizen DAA Specific Parameters (from C++ `Consensus::Params`)
+
+These parameters are directly extracted or derived from the provided C++ `CMainParams` class and are fundamental to the Horizen DAA's operation.
+
+* `DAA_WINDOW_SIZE = 17`:
+    * **Description:** The primary window size for the DAA, representing the number of preceding blocks whose averaged properties (like targets) are used for difficulty calculation.
+    * **C++ Reference:** `consensus.nPowAveragingWindow`.
+
+* `MTP_SIZE = 11`:
+    * **Description:** The window size used for calculating the Median Time-Past (MTP) of a block. The MTP is the median of the timestamps of the last `MTP_SIZE` blocks. This ensures robustness against timestamp manipulation.
+    * **C++ Reference:** Typically defined as `nMedianTimeSpan` in `src/chain.h` or `src/consensus/consensus.h`.
+
+* `nPowMaxAdjustUpPercent = 16`:
+    * **Description:** Defines the maximum percentage decrease in the `nActualTimespan` allowed. This translates to a maximum percentage *increase* in difficulty. A value of `16` means `nActualTimespan` cannot be less than `(100 - 16)% = 84%` of the target window timespan.
+    * **C++ Reference:** `consensus.nPowMaxAdjustUp`. Used in `MinActualTimespan()`.
+
+* `nPowMaxAdjustDownPercent = 32`:
+    * **Description:** Defines the maximum percentage increase in the `nActualTimespan` allowed. This translates to a maximum percentage *decrease* in difficulty. A value of `32` means `nActualTimespan` cannot be more than `(100 + 32)% = 132%` of the target window timespan.
+    * **C++ Reference:** `consensus.nPowMaxAdjustDown`. Used in `MaxActualTimespan()`.
+
+---
+
+## 3. Core Simulation Logic Explained
+
+The simulation proceeds block by block, updating the blockchain state (timestamps, difficulties) and calculating the next difficulty based on the DAA.
+
+### 3.1 `blockTime` Calculation
+
+The `blockTime` for each simulated block is calculated deterministically based on the current network conditions:
+
+$$ \mathrm{blockTime} = \mathrm{targetBlockTime} \times \frac{\mathrm{currentDifficulty}}{\mathrm{currentHashrate}} $$
+
+* `targetBlockTime`: The desired constant block interval (e.g., 150 seconds).
+* `currentDifficulty`: The difficulty value set for the current block.
+* `currentHashrate`: The total hashing power of the network at the current block height.
+
+### 3.2 `get_median_time_past(current_height, ts_list, window_mtp=MTP_SIZE)`
+
+This helper function calculates the Median Time-Past (MTP) for a given block.
+
+* **Purpose:** To compute a robust timestamp that is resistant to manipulation.
+* **Methodology:** It collects `window_mtp` (defaulting to `MTP_SIZE = 11`) most recent block timestamps (including the current one) and returns their median. If fewer than `window_mtp` blocks are available, it uses all existing timestamps.
+* **C++ Reference:** This function directly emulates `CBlockIndex::GetMedianTimePast()` from the C++ codebase.
+
+### 3.3 `compute_next_difficulty(...)`
+
+This is the core function that implements the Horizen DAA logic to calculate the `new_difficulty` for the subsequent block, mirroring the C++ `GetNextWorkRequired` and `CalculateNextWorkRequired` functions.
+
+#### 1. Handle Early Blocks
+
+* **Logic:**
+    ```python
+    if current_height < daa_window_size + MTP_SIZE:
+        return diff_list[-1]
+    ```
+* **Explanation:** The DAA requires sufficient historical data (both for its main window and for the MTP calculations within that window) to make an accurate adjustment. This condition ensures the DAA remains inactive and the difficulty constant until enough blocks (`DAA_WINDOW_SIZE + MTP_SIZE` = 17 + 11 = 28 blocks) have been mined.
+
+#### 2. Calculate `bnAvg` (Average of Targets)
+
+* **Purpose:** To compute the arithmetic mean of the mining targets over the `DAA_WINDOW_SIZE` (17) previous blocks.
+* **Logic:** The function sums the normalized target values (`1.0 / difficulty`) for the last 17 blocks and divides by 17.
+* **C++ Reference:** Mirrors `arith_uint256 bnAvg {bnTot / params.nPowAveragingWindow};` where `bnTot` is the sum of `nBits` (compressed target values).
+
+#### 3. Calculate Raw `nActualTimespan`
+
+* **Purpose:** To determine the actual time elapsed over the DAA window using robust MTP timestamps.
+* **Logic:**
+    ```python
+    nLastBlockTime = get_median_time_past(current_height, ts_list)
+    nFirstBlockTime = get_median_time_past(current_height - daa_window_size, ts_list)
+    nActualTimespanRaw = nLastBlockTime - nFirstBlockTime
+    ```
+* **Explanation:** This calculates the difference between the MTP of the current block (`pindexLast`) and the MTP of the block exactly `DAA_WINDOW_SIZE` (17) blocks ago (`pindexFirst` in C++). This ensures `nActualTimespanRaw` correctly measures the time over the full DAA window.
+* **C++ Reference:** `int64_t nActualTimespan = nLastBlockTime - nFirstBlockTime;` in `CalculateNextWorkRequired`, where `nFirstBlockTime` corresponds to `pindexFirst->GetMedianTimePast()` after `pindexFirst` has been moved back `DAA_WINDOW_SIZE` times.
+
+#### 4. Apply Dampening to `nActualTimespan`
+
+* **Purpose:** To smooth out the `nActualTimespan` and make the difficulty adjustment less volatile by limiting the immediate impact of deviations.
+* **Logic:**
+    $$
+    \mathrm{nActualTimespanDampened} = \mathrm{targetWindowTimespan} + \frac{\mathrm{nActualTimespanRaw} - \mathrm{targetWindowTimespan}}{4}
+    $$
+    Where `targetWindowTimespan = target_spacing * daa_window_size` (e.g., $150 \times 17 = 2550$ seconds).
+* **Explanation:** Only 25% of the deviation from the `targetWindowTimespan` is applied.
+* **C++ Reference:** `nActualTimespan = params.AveragingWindowTimespan() + (nActualTimespan - params.AveragingWindowTimespan())/4;`
+
+#### 5. Apply Clamping to Dampened `nActualTimespan`
+
+* **Purpose:** To set hard limits on the maximum and minimum values that `nActualTimespanDampened` can take, based on the `nPowMaxAdjustUpPercent` and `nPowMaxAdjustDownPercent` parameters.
+* **Logic:**
+    $$
+    \mathrm{minActualTimespanClamped} = \mathrm{targetWindowTimespan} \times \frac{(100 - \mathrm{nPowMaxAdjustUpPercent})}{100}
+    $$
+    $$
+    \mathrm{maxActualTimespanClamped} = \mathrm{targetWindowTimespan} \times \frac{(100 + \mathrm{nPowMaxAdjustDownPercent})}{100}
+    $$
+    The `nActualTimespanDampened` is then constrained within these values.
+* **Effective Difficulty Adjustment Factors:**
+    * **Maximum Difficulty Increase:** If `nActualTimespanDampened` hits `minActualTimespanClamped`, the difficulty increases by a factor of $\frac{100}{(100 - \mathrm{nPowMaxAdjustUpPercent})} = \frac{100}{(100 - 16)} = \frac{100}{84} \approx 1.19$ (approx. 19% increase).
+    * **Maximum Difficulty Decrease:** If `nActualTimespanDampened` hits `maxActualTimespanClamped`, the difficulty decreases by a factor of $\frac{100}{(100 + \mathrm{nPowMaxAdjustDownPercent})} = \frac{100}{(100 + 32)} = \frac{100}{132} \approx 0.757$ (approx. 24.3% decrease).
+* **C++ Reference:** `if (nActualTimespan < params.MinActualTimespan())` and `if (nActualTimespan > params.MaxActualTimespan())`, where `MinActualTimespan()` and `MaxActualTimespan()` are calculated using the percentage logic.
+
+#### 6. Retarget (Calculate New Difficulty)
+
+* **Purpose:** To compute the new mining difficulty for the next block based on the averaged targets and the adjusted actual timespan.
+* **Logic:**
+    ```python
+    new_target_simulated = bnAvg_simulated * (nActualTimespanDampened / targetWindowTimespan)
+    new_difficulty = 1.0 / new_target_simulated
+    ```
+* **Formula (Target-based):**
+    $$ \mathrm{NewTarget} = \mathrm{AverageTarget} \times \frac{\mathrm{nActualTimespanDampened}}{\mathrm{targetWindowTimespan}} $$
+* **Formula (Difficulty-based):**
+    $$ \mathrm{NewDifficulty} = \frac{1.0}{\mathrm{NewTarget}} $$
+* **C++ Reference:** `bnNew = bnAvg / params.AveragingWindowTimespan() * nActualTimespan;` where `bnNew` is the new target.
+
+---
+
+
+# How to run the simulation (Ubuntu)
+
+Install venv module if necessary:
+
+``` bash
+sudo apt update
+sudo apt install python3-venv
+```
+
+Create a virtual environment:
+
+```
+python3 -m venv venv
+```
+
+Activate it:
+
+```
+source venv/bin/activate
+```
+
+Install required packages:
+
+```
+pip install -r requirements.txt
+```
+
+Edit the script if necessary for modifying some parameters and run with:
+
+```
+python3 difficulty_adj_algo_sim.py
+```
+
+```
+Simulation complete. Final Block Time: 150.00s
+Final Difficulty: 0.3000
+------------------------------------------------
+Time for 100 blocks at target block time without hashrate drop (150s):
+Total: 4h 10m 0.00s (15000.00 seconds)
+------------------------------------------------
+Time taken for 100 blocks after hashrate drop (from Block 100 to Block 200):
+Total: 6h 18m 3.99s (22683.99 seconds)
+Average time per block in this period: 226.84 seconds/block
+------------------------------------------------
+Simulation plot saved at: ./horizen_daa_simulation.png`
+```
