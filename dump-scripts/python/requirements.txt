@@ -247,9 +247,9 @@ bitarray==3.4.2 \
     --hash=sha256:fc4b304afc23bdeec34f3d442a5d1edcaa49fa33310dfdf1be4997d2b80947d1 \
     --hash=sha256:fe7706f75f3b86e7afa516452bed9757ee301b59aea580c551c32a5e1cef082c
     # via eth-account
-certifi==2025.4.26 \
-    --hash=sha256:0a816057ea3cdefcef70270d2c515e4506bbc954f417fa5ade2021213bb8f0c6 \
-    --hash=sha256:30350364dfe371162649852c63336a15c70c6510c2ad5015b21c2345311805f3
+certifi==2026.10.19 \
+    --hash=sha256:035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae \
+    --hash=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b
     # via requests
 charset-normalizer==3.4.2 \
     --hash=sha256:005fa3432484527f9732ebd315da8da8001593e2cf46a3d817669f062c3d9ed4 \
